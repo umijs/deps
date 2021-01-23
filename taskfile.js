@@ -1,8 +1,20 @@
-const { relative } = require('path');
+const { relative, basename, resolve } = require('path');
+const { Module } = require('module');
+
+const m = new Module(resolve(__dirname, 'bundles', '_'));
+m.filename = m.id;
+m.paths = Module._nodeModulePaths(m.id);
+const bundleRequire = m.require;
+bundleRequire.resolve = (request, options) => {
+  return Module._resolveFilename(request, m, false, options);
+};
 
 const externals = {
   chokidar: 'chokidar',
   clipboardy: 'clipboardy',
+
+  // webapck
+  'node-libs-browser': 'node-libs-browser',
 };
 
 externals['address'] = '@umijs/deps/compiled/address';
@@ -225,6 +237,26 @@ export async function ncc_yargs(task, opts) {
     .target('compiled/yargs');
 }
 
+externals['webpack-sources'] = '@umijs/deps/compiled/webpack-sources';
+export async function ncc_webpack_sources(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('webpack-sources'))
+    )
+    .ncc({ packageName: 'webpack-sources', externals })
+    .target('compiled/webpack-sources');
+}
+
+externals['webpack-sources2'] = '@umijs/deps/compiled/webpack-sources2'
+export async function ncc_webpack_sources2(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, bundleRequire.resolve('webpack-sources2'))
+    )
+    .ncc({ packageName: 'webpack-sources2', externals, target: 'es5' })
+    .target('compiled/webpack-sources2')
+}
+
 export async function ncc_webpack_bundle4(task, opts) {
   await task
     .source(opts.src || 'bundles/webpack/bundle4.js')
@@ -236,6 +268,25 @@ export async function ncc_webpack_bundle4(task, opts) {
       target: 'es5',
     })
     .target('compiled/webpack')
+}
+
+export async function ncc_webpack_bundle5(task, opts) {
+  await task
+    .source(opts.src || 'bundles/webpack/bundle5.js')
+    .ncc({
+      packageName: 'webpack5',
+      bundleName: 'webpack',
+      customEmit(path) {
+        if (path.endsWith('.runtime.js')) return `'./${basename(path)}'`;
+      },
+      externals: {
+        ...externals,
+        'webpack-sources': '@umijs/deps/compiled/webpack-sources2',
+      },
+      minify: false,
+      target: 'es5',
+    })
+    .target('compiled/webpack');
 }
 
 export async function ncc(task) {
@@ -264,7 +315,18 @@ export async function ncc(task) {
       'ncc_signale',
       'ncc_yargs_parser',
       'ncc_yargs',
+      'ncc_webpack_sources',
+      'ncc_webpack_sources2',
+      'ncc_webpack_bundle4',
+      'ncc_webpack_bundle5',
+      'ncc_webpack_bundle_packages',
     ]);
+}
+
+export async function ncc_webpack_bundle_packages(task, opts) {
+  await task
+    .source(opts.src || 'bundles/webpack/packages/*')
+    .target('compiled/webpack/')
 }
 
 export default async function (task) {
