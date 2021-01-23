@@ -1,0 +1,49 @@
+{
+  "name": "@umijs/deps",
+  "version": "0.1.0",
+  "scripts": {
+    "ncc-compiled": "ncc cache clean && taskr ncc"
+  },
+  "taskr": {
+    "requires": [
+      "./taskfile-ncc.js"
+    ]
+  },
+  "files": [
+    "compiled",
+    "index.js"
+  ],
+  "dependencies": {
+    "chokidar": "3.5.1",
+    "clipboardy": "2.3.0"
+  },
+  "devDependencies": {
+    "@taskr/clear": "1.1.0",
+    "@taskr/esnext": "1.1.0",
+    "@taskr/watch": "1.1.0",
+    "@vercel/ncc": "0.27.0",
+    "address": "1.1.2",
+    "chalk": "4.1.0",
+    "cheerio": "1.0.0-rc.5",
+    "color": "3.1.3",
+    "crequire": "1.8.1",
+    "cross-spawn": "7.0.3",
+    "debug": "4.3.1",
+    "deepmerge": "4.2.2",
+    "execa": "4.0.3",
+    "glob": "7.1.6",
+    "got": "9.6.0",
+    "lodash": "4.17.20",
+    "mkdirp": "1.0.4",
+    "mustache": "4.1.0",
+    "pkg-up": "3.1.0",
+    "portfinder": "1.0.28",
+    "resolve": "1.19.0",
+    "rimraf": "3.0.2",
+    "semver": "7.3.4",
+    "signale": "1.4.0",
+    "yargs": "15.4.1",
+    "yargs-parser": "18.1.3",
+    "taskr": "1.1.0"
+  }
+}
