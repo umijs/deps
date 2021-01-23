@@ -127,6 +127,26 @@ export async function ncc_got(task, opts) {
     .target('compiled/got');
 }
 
+externals['less'] = '@umijs/deps/compiled/less';
+export async function ncc_less(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('less'))
+    )
+    .ncc({ packageName: 'less', externals })
+    .target('compiled/less');
+}
+
+externals['less-loader'] = '@umijs/deps/compiled/less-loader';
+export async function ncc_less_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('less-loader'))
+    )
+    .ncc({ packageName: 'less-loader', externals })
+    .target('compiled/less-loader');
+}
+
 externals['lodash'] = '@umijs/deps/compiled/lodash';
 export async function ncc_lodash(task, opts) {
   await task
@@ -305,6 +325,8 @@ export async function ncc(task) {
       'ncc_glob',
       'ncc_got',
       'ncc_lodash',
+      'ncc_less',
+      'ncc_less_loader',
       'ncc_mkdirp',
       'ncc_mustache',
       'ncc_pkg_up',
