@@ -1,9 +1,9 @@
 module.exports =
-/******/ (function() { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 33:
-/***/ (function(module) {
+/***/ ((module) => {
 
 var g;
 

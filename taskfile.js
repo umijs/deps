@@ -57,6 +57,16 @@ export async function ncc_color(task, opts) {
     .target('compiled/color');
 }
 
+externals['copy-webpack-plugin'] = '@umijs/deps/compiled/copy-webpack-plugin';
+export async function ncc_copy_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('copy-webpack-plugin'))
+    )
+    .ncc({ packageName: 'copy-webpack-plugin', externals })
+    .target('compiled/copy-webpack-plugin');
+}
+
 externals['crequire'] = '@umijs/deps/compiled/crequire';
 export async function ncc_crequire(task, opts) {
   await task
@@ -75,6 +85,26 @@ export async function ncc_cross_spawn(task, opts) {
     )
     .ncc({ packageName: 'cross-spawn', externals })
     .target('compiled/cross-spawn');
+}
+
+externals['css-loader'] = '@umijs/deps/compiled/css-loader';
+export async function ncc_css_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('css-loader'))
+    )
+    .ncc({ packageName: 'css-loader', externals })
+    .target('compiled/css-loader');
+}
+
+externals['css-modules-typescript-loader'] = '@umijs/deps/compiled/css-modules-typescript-loader';
+export async function ncc_css_modules_typescript_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('css-modules-typescript-loader'))
+    )
+    .ncc({ packageName: 'css-modules-typescript-loader', externals })
+    .target('compiled/css-modules-typescript-loader');
 }
 
 externals['debug'] = '@umijs/deps/compiled/debug';
@@ -105,6 +135,26 @@ export async function ncc_execa(task, opts) {
     )
     .ncc({ packageName: 'execa', externals })
     .target('compiled/execa');
+}
+
+externals['file-loader'] = '@umijs/deps/compiled/file-loader';
+export async function ncc_file_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('file-loader'))
+    )
+    .ncc({ packageName: 'file-loader', externals })
+    .target('compiled/file-loader');
+}
+
+externals['friendly-errors-webpack-plugin'] = '@umijs/deps/compiled/friendly-errors-webpack-plugin';
+export async function ncc_friendly_errors_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('friendly-errors-webpack-plugin'))
+    )
+    .ncc({ packageName: 'friendly-errors-webpack-plugin', externals })
+    .target('compiled/friendly-errors-webpack-plugin');
 }
 
 externals['glob'] = '@umijs/deps/compiled/glob';
@@ -177,6 +227,16 @@ export async function ncc_mustache(task, opts) {
     .target('compiled/mustache');
 }
 
+externals['optimize-css-assets-webpack-plugin'] = '@umijs/deps/compiled/optimize-css-assets-webpack-plugin';
+export async function ncc_optimize_css_assets_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('optimize-css-assets-webpack-plugin'))
+    )
+    .ncc({ packageName: 'optimize-css-assets-webpack-plugin', externals })
+    .target('compiled/optimize-css-assets-webpack-plugin');
+}
+
 externals['pkg-up'] = '@umijs/deps/compiled/pkg-up';
 export async function ncc_pkg_up(task, opts) {
   await task
@@ -195,6 +255,16 @@ export async function ncc_portfinder(task, opts) {
     )
     .ncc({ packageName: 'portfinder', externals })
     .target('compiled/portfinder');
+}
+
+externals['raw-loader'] = '@umijs/deps/compiled/raw-loader';
+export async function ncc_raw_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('raw-loader'))
+    )
+    .ncc({ packageName: 'raw-loader', externals })
+    .target('compiled/raw-loader');
 }
 
 externals['resolve'] = '@umijs/deps/compiled/resolve';
@@ -237,6 +307,36 @@ export async function ncc_signale(task, opts) {
     .target('compiled/signale');
 }
 
+externals['speed-measure-webpack-plugin'] = '@umijs/deps/compiled/speed-measure-webpack-plugin';
+export async function ncc_speed_measure_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('speed-measure-webpack-plugin'))
+    )
+    .ncc({ packageName: 'speed-measure-webpack-plugin', externals })
+    .target('compiled/speed-measure-webpack-plugin');
+}
+
+externals['stats-webpack-plugin'] = '@umijs/deps/compiled/stats-webpack-plugin';
+export async function ncc_stats_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('stats-webpack-plugin'))
+    )
+    .ncc({ packageName: 'stats-webpack-plugin', externals })
+    .target('compiled/stats-webpack-plugin');
+}
+
+externals['style-loader'] = '@umijs/deps/compiled/style-loader';
+export async function ncc_style_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('style-loader'))
+    )
+    .ncc({ packageName: 'style-loader', externals })
+    .target('compiled/style-loader');
+}
+
 externals['yargs-parser'] = '@umijs/deps/compiled/yargs-parser';
 export async function ncc_yargs_parser(task, opts) {
   await task
@@ -245,6 +345,56 @@ export async function ncc_yargs_parser(task, opts) {
     )
     .ncc({ packageName: 'yargs-parser', externals })
     .target('compiled/yargs-parser');
+}
+
+externals['url-loader'] = '@umijs/deps/compiled/url-loader';
+export async function ncc_url_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('url-loader'))
+    )
+    .ncc({ packageName: 'url-loader', externals })
+    .target('compiled/url-loader');
+}
+
+externals['webpack-chain'] = '@umijs/deps/compiled/webpack-chain';
+export async function ncc_webpack_chain(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('webpack-chain'))
+    )
+    .ncc({ packageName: 'webpack-chain', externals })
+    .target('compiled/webpack-chain');
+}
+
+externals['webpack-dev-middleware'] = '@umijs/deps/compiled/webpack-dev-middleware';
+export async function ncc_webpack_dev_middleware(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('webpack-dev-middleware'))
+    )
+    .ncc({ packageName: 'webpack-dev-middleware', externals })
+    .target('compiled/webpack-dev-middleware');
+}
+
+externals['webpack-manifest-plugin'] = '@umijs/deps/compiled/webpack-manifest-plugin';
+export async function ncc_webpack_manifest_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('webpack-manifest-plugin'))
+    )
+    .ncc({ packageName: 'webpack-manifest-plugin', externals })
+    .target('compiled/webpack-manifest-plugin');
+}
+
+externals['webpackbar'] = '@umijs/deps/compiled/webpackbar';
+export async function ncc_webpackbar(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('webpackbar'))
+    )
+    .ncc({ packageName: 'webpackbar', externals })
+    .target('compiled/webpackbar');
 }
 
 externals['yargs'] = '@umijs/deps/compiled/yargs';
@@ -317,8 +467,11 @@ export async function ncc(task) {
       'ncc_chalk',
       'ncc_cheerio',
       'ncc_color',
+      'ncc_copy_webpack_plugin',
       'ncc_crequire',
       'ncc_cross_spawn',
+      'ncc_css_loader',
+      'ncc_css_modules_typescript_loader',
       'ncc_debug',
       'ncc_deepmerge',
       'ncc_execa',
@@ -329,12 +482,22 @@ export async function ncc(task) {
       'ncc_less_loader',
       'ncc_mkdirp',
       'ncc_mustache',
+      'ncc_optimize_css_assets_webpack_plugin',
       'ncc_pkg_up',
       'ncc_portfinder',
+      'ncc_raw_loader',
       'ncc_resolve',
       'ncc_rimraf',
       'ncc_semver',
       'ncc_signale',
+      'ncc_speed_measure_webpack_plugin',
+      'ncc_stats_webpack_plugin',
+      'ncc_style_loader',
+      'ncc_url_loader',
+      'ncc_webpack_chain',
+      'ncc_webpack_dev_middleware', // webpack-dev-middleware
+      'ncc_webpack_manifest_plugin', // webpack-manifest-plugin
+      'ncc_webpackbar',
       'ncc_yargs_parser',
       'ncc_yargs',
       'ncc_webpack_sources',

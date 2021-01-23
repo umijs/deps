@@ -6154,2776 +6154,6 @@ module.exports = bufferFrom
 
 /***/ }),
 
-/***/ 4761:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const figgyPudding = __nccwpck_require__(3571)
-const fs = __nccwpck_require__(5747)
-const index = __nccwpck_require__(595)
-const memo = __nccwpck_require__(5575)
-const pipe = __nccwpck_require__(3758).pipe
-const pipeline = __nccwpck_require__(3758).pipeline
-const read = __nccwpck_require__(9409)
-const through = __nccwpck_require__(3758).through
-
-const GetOpts = figgyPudding({
-  integrity: {},
-  memoize: {},
-  size: {}
-})
-
-module.exports = function get (cache, key, opts) {
-  return getData(false, cache, key, opts)
-}
-module.exports.byDigest = function getByDigest (cache, digest, opts) {
-  return getData(true, cache, digest, opts)
-}
-function getData (byDigest, cache, key, opts) {
-  opts = GetOpts(opts)
-  const memoized = (
-    byDigest
-      ? memo.get.byDigest(cache, key, opts)
-      : memo.get(cache, key, opts)
-  )
-  if (memoized && opts.memoize !== false) {
-    return BB.resolve(byDigest ? memoized : {
-      metadata: memoized.entry.metadata,
-      data: memoized.data,
-      integrity: memoized.entry.integrity,
-      size: memoized.entry.size
-    })
-  }
-  return (
-    byDigest ? BB.resolve(null) : index.find(cache, key, opts)
-  ).then(entry => {
-    if (!entry && !byDigest) {
-      throw new index.NotFoundError(cache, key)
-    }
-    return read(cache, byDigest ? key : entry.integrity, {
-      integrity: opts.integrity,
-      size: opts.size
-    }).then(data => byDigest ? data : {
-      metadata: entry.metadata,
-      data: data,
-      size: entry.size,
-      integrity: entry.integrity
-    }).then(res => {
-      if (opts.memoize && byDigest) {
-        memo.put.byDigest(cache, key, res, opts)
-      } else if (opts.memoize) {
-        memo.put(cache, entry, res.data, opts)
-      }
-      return res
-    })
-  })
-}
-
-module.exports.sync = function get (cache, key, opts) {
-  return getDataSync(false, cache, key, opts)
-}
-module.exports.sync.byDigest = function getByDigest (cache, digest, opts) {
-  return getDataSync(true, cache, digest, opts)
-}
-function getDataSync (byDigest, cache, key, opts) {
-  opts = GetOpts(opts)
-  const memoized = (
-    byDigest
-      ? memo.get.byDigest(cache, key, opts)
-      : memo.get(cache, key, opts)
-  )
-  if (memoized && opts.memoize !== false) {
-    return byDigest ? memoized : {
-      metadata: memoized.entry.metadata,
-      data: memoized.data,
-      integrity: memoized.entry.integrity,
-      size: memoized.entry.size
-    }
-  }
-  const entry = !byDigest && index.find.sync(cache, key, opts)
-  if (!entry && !byDigest) {
-    throw new index.NotFoundError(cache, key)
-  }
-  const data = read.sync(
-    cache,
-    byDigest ? key : entry.integrity,
-    {
-      integrity: opts.integrity,
-      size: opts.size
-    }
-  )
-  const res = byDigest
-    ? data
-    : {
-      metadata: entry.metadata,
-      data: data,
-      size: entry.size,
-      integrity: entry.integrity
-    }
-  if (opts.memoize && byDigest) {
-    memo.put.byDigest(cache, key, res, opts)
-  } else if (opts.memoize) {
-    memo.put(cache, entry, res.data, opts)
-  }
-  return res
-}
-
-module.exports.stream = getStream
-function getStream (cache, key, opts) {
-  opts = GetOpts(opts)
-  let stream = through()
-  const memoized = memo.get(cache, key, opts)
-  if (memoized && opts.memoize !== false) {
-    stream.on('newListener', function (ev, cb) {
-      ev === 'metadata' && cb(memoized.entry.metadata)
-      ev === 'integrity' && cb(memoized.entry.integrity)
-      ev === 'size' && cb(memoized.entry.size)
-    })
-    stream.write(memoized.data, () => stream.end())
-    return stream
-  }
-  index.find(cache, key).then(entry => {
-    if (!entry) {
-      return stream.emit(
-        'error', new index.NotFoundError(cache, key)
-      )
-    }
-    let memoStream
-    if (opts.memoize) {
-      let memoData = []
-      let memoLength = 0
-      memoStream = through((c, en, cb) => {
-        memoData && memoData.push(c)
-        memoLength += c.length
-        cb(null, c, en)
-      }, cb => {
-        memoData && memo.put(cache, entry, Buffer.concat(memoData, memoLength), opts)
-        cb()
-      })
-    } else {
-      memoStream = through()
-    }
-    stream.emit('metadata', entry.metadata)
-    stream.emit('integrity', entry.integrity)
-    stream.emit('size', entry.size)
-    stream.on('newListener', function (ev, cb) {
-      ev === 'metadata' && cb(entry.metadata)
-      ev === 'integrity' && cb(entry.integrity)
-      ev === 'size' && cb(entry.size)
-    })
-    pipe(
-      read.readStream(cache, entry.integrity, opts.concat({
-        size: opts.size == null ? entry.size : opts.size
-      })),
-      memoStream,
-      stream
-    )
-  }).catch(err => stream.emit('error', err))
-  return stream
-}
-
-module.exports.stream.byDigest = getStreamDigest
-function getStreamDigest (cache, integrity, opts) {
-  opts = GetOpts(opts)
-  const memoized = memo.get.byDigest(cache, integrity, opts)
-  if (memoized && opts.memoize !== false) {
-    const stream = through()
-    stream.write(memoized, () => stream.end())
-    return stream
-  } else {
-    let stream = read.readStream(cache, integrity, opts)
-    if (opts.memoize) {
-      let memoData = []
-      let memoLength = 0
-      const memoStream = through((c, en, cb) => {
-        memoData && memoData.push(c)
-        memoLength += c.length
-        cb(null, c, en)
-      }, cb => {
-        memoData && memo.put.byDigest(
-          cache,
-          integrity,
-          Buffer.concat(memoData, memoLength),
-          opts
-        )
-        cb()
-      })
-      stream = pipeline(stream, memoStream)
-    }
-    return stream
-  }
-}
-
-module.exports.info = info
-function info (cache, key, opts) {
-  opts = GetOpts(opts)
-  const memoized = memo.get(cache, key, opts)
-  if (memoized && opts.memoize !== false) {
-    return BB.resolve(memoized.entry)
-  } else {
-    return index.find(cache, key)
-  }
-}
-
-module.exports.hasContent = read.hasContent
-
-module.exports.copy = function cp (cache, key, dest, opts) {
-  return copy(false, cache, key, dest, opts)
-}
-module.exports.copy.byDigest = function cpDigest (cache, digest, dest, opts) {
-  return copy(true, cache, digest, dest, opts)
-}
-function copy (byDigest, cache, key, dest, opts) {
-  opts = GetOpts(opts)
-  if (read.copy) {
-    return (
-      byDigest ? BB.resolve(null) : index.find(cache, key, opts)
-    ).then(entry => {
-      if (!entry && !byDigest) {
-        throw new index.NotFoundError(cache, key)
-      }
-      return read.copy(
-        cache, byDigest ? key : entry.integrity, dest, opts
-      ).then(() => byDigest ? key : {
-        metadata: entry.metadata,
-        size: entry.size,
-        integrity: entry.integrity
-      })
-    })
-  } else {
-    return getData(byDigest, cache, key, opts).then(res => {
-      return fs.writeFileAsync(dest, byDigest ? res : res.data)
-        .then(() => byDigest ? key : {
-          metadata: res.metadata,
-          size: res.size,
-          integrity: res.integrity
-        })
-    })
-  }
-}
-
-
-/***/ }),
-
-/***/ 3491:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const contentVer = __nccwpck_require__(1666)/* ["cache-version"].content */ .Jw.k
-const hashToSegments = __nccwpck_require__(2700)
-const path = __nccwpck_require__(5622)
-const ssri = __nccwpck_require__(6726)
-
-// Current format of content file path:
-//
-// sha512-BaSE64Hex= ->
-// ~/.my-cache/content-v2/sha512/ba/da/55deadbeefc0ffee
-//
-module.exports = contentPath
-function contentPath (cache, integrity) {
-  const sri = ssri.parse(integrity, { single: true })
-  // contentPath is the *strongest* algo given
-  return path.join.apply(path, [
-    contentDir(cache),
-    sri.algorithm
-  ].concat(hashToSegments(sri.hexDigest())))
-}
-
-module.exports._contentDir = contentDir
-function contentDir (cache) {
-  return path.join(cache, `content-v${contentVer}`)
-}
-
-
-/***/ }),
-
-/***/ 9409:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const contentPath = __nccwpck_require__(3491)
-const figgyPudding = __nccwpck_require__(3571)
-const fs = __nccwpck_require__(7758)
-const PassThrough = __nccwpck_require__(2413).PassThrough
-const pipe = BB.promisify(__nccwpck_require__(3758).pipe)
-const ssri = __nccwpck_require__(6726)
-const Y = __nccwpck_require__(4217)
-
-const lstatAsync = BB.promisify(fs.lstat)
-const readFileAsync = BB.promisify(fs.readFile)
-
-const ReadOpts = figgyPudding({
-  size: {}
-})
-
-module.exports = read
-function read (cache, integrity, opts) {
-  opts = ReadOpts(opts)
-  return withContentSri(cache, integrity, (cpath, sri) => {
-    return readFileAsync(cpath, null).then(data => {
-      if (typeof opts.size === 'number' && opts.size !== data.length) {
-        throw sizeError(opts.size, data.length)
-      } else if (ssri.checkData(data, sri)) {
-        return data
-      } else {
-        throw integrityError(sri, cpath)
-      }
-    })
-  })
-}
-
-module.exports.sync = readSync
-function readSync (cache, integrity, opts) {
-  opts = ReadOpts(opts)
-  return withContentSriSync(cache, integrity, (cpath, sri) => {
-    const data = fs.readFileSync(cpath)
-    if (typeof opts.size === 'number' && opts.size !== data.length) {
-      throw sizeError(opts.size, data.length)
-    } else if (ssri.checkData(data, sri)) {
-      return data
-    } else {
-      throw integrityError(sri, cpath)
-    }
-  })
-}
-
-module.exports.stream = readStream
-module.exports.readStream = readStream
-function readStream (cache, integrity, opts) {
-  opts = ReadOpts(opts)
-  const stream = new PassThrough()
-  withContentSri(cache, integrity, (cpath, sri) => {
-    return lstatAsync(cpath).then(stat => ({ cpath, sri, stat }))
-  }).then(({ cpath, sri, stat }) => {
-    return pipe(
-      fs.createReadStream(cpath),
-      ssri.integrityStream({
-        integrity: sri,
-        size: opts.size
-      }),
-      stream
-    )
-  }).catch(err => {
-    stream.emit('error', err)
-  })
-  return stream
-}
-
-let copyFileAsync
-if (fs.copyFile) {
-  module.exports.copy = copy
-  module.exports.copy.sync = copySync
-  copyFileAsync = BB.promisify(fs.copyFile)
-}
-
-function copy (cache, integrity, dest, opts) {
-  opts = ReadOpts(opts)
-  return withContentSri(cache, integrity, (cpath, sri) => {
-    return copyFileAsync(cpath, dest)
-  })
-}
-
-function copySync (cache, integrity, dest, opts) {
-  opts = ReadOpts(opts)
-  return withContentSriSync(cache, integrity, (cpath, sri) => {
-    return fs.copyFileSync(cpath, dest)
-  })
-}
-
-module.exports.hasContent = hasContent
-function hasContent (cache, integrity) {
-  if (!integrity) { return BB.resolve(false) }
-  return withContentSri(cache, integrity, (cpath, sri) => {
-    return lstatAsync(cpath).then(stat => ({ size: stat.size, sri, stat }))
-  }).catch(err => {
-    if (err.code === 'ENOENT') { return false }
-    if (err.code === 'EPERM') {
-      if (process.platform !== 'win32') {
-        throw err
-      } else {
-        return false
-      }
-    }
-  })
-}
-
-module.exports.hasContent.sync = hasContentSync
-function hasContentSync (cache, integrity) {
-  if (!integrity) { return false }
-  return withContentSriSync(cache, integrity, (cpath, sri) => {
-    try {
-      const stat = fs.lstatSync(cpath)
-      return { size: stat.size, sri, stat }
-    } catch (err) {
-      if (err.code === 'ENOENT') { return false }
-      if (err.code === 'EPERM') {
-        if (process.platform !== 'win32') {
-          throw err
-        } else {
-          return false
-        }
-      }
-    }
-  })
-}
-
-function withContentSri (cache, integrity, fn) {
-  return BB.try(() => {
-    const sri = ssri.parse(integrity)
-    // If `integrity` has multiple entries, pick the first digest
-    // with available local data.
-    const algo = sri.pickAlgorithm()
-    const digests = sri[algo]
-    if (digests.length <= 1) {
-      const cpath = contentPath(cache, digests[0])
-      return fn(cpath, digests[0])
-    } else {
-      return BB.any(sri[sri.pickAlgorithm()].map(meta => {
-        return withContentSri(cache, meta, fn)
-      }, { concurrency: 1 }))
-        .catch(err => {
-          if ([].some.call(err, e => e.code === 'ENOENT')) {
-            throw Object.assign(
-              new Error('No matching content found for ' + sri.toString()),
-              { code: 'ENOENT' }
-            )
-          } else {
-            throw err[0]
-          }
-        })
-    }
-  })
-}
-
-function withContentSriSync (cache, integrity, fn) {
-  const sri = ssri.parse(integrity)
-  // If `integrity` has multiple entries, pick the first digest
-  // with available local data.
-  const algo = sri.pickAlgorithm()
-  const digests = sri[algo]
-  if (digests.length <= 1) {
-    const cpath = contentPath(cache, digests[0])
-    return fn(cpath, digests[0])
-  } else {
-    let lastErr = null
-    for (const meta of sri[sri.pickAlgorithm()]) {
-      try {
-        return withContentSriSync(cache, meta, fn)
-      } catch (err) {
-        lastErr = err
-      }
-    }
-    if (lastErr) { throw lastErr }
-  }
-}
-
-function sizeError (expected, found) {
-  var err = new Error(Y`Bad data size: expected inserted data to be ${expected} bytes, but got ${found} instead`)
-  err.expected = expected
-  err.found = found
-  err.code = 'EBADSIZE'
-  return err
-}
-
-function integrityError (sri, path) {
-  var err = new Error(Y`Integrity verification failed for ${sri} (${path})`)
-  err.code = 'EINTEGRITY'
-  err.sri = sri
-  err.path = path
-  return err
-}
-
-
-/***/ }),
-
-/***/ 1343:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const contentPath = __nccwpck_require__(3491)
-const hasContent = __nccwpck_require__(9409).hasContent
-const rimraf = BB.promisify(__nccwpck_require__(9219))
-
-module.exports = rm
-function rm (cache, integrity) {
-  return hasContent(cache, integrity).then(content => {
-    if (content) {
-      const sri = content.sri
-      if (sri) {
-        return rimraf(contentPath(cache, sri)).then(() => true)
-      }
-    } else {
-      return false
-    }
-  })
-}
-
-
-/***/ }),
-
-/***/ 3729:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const contentPath = __nccwpck_require__(3491)
-const fixOwner = __nccwpck_require__(1191)
-const fs = __nccwpck_require__(7758)
-const moveFile = __nccwpck_require__(5604)
-const PassThrough = __nccwpck_require__(2413).PassThrough
-const path = __nccwpck_require__(5622)
-const pipe = BB.promisify(__nccwpck_require__(3758).pipe)
-const rimraf = BB.promisify(__nccwpck_require__(9219))
-const ssri = __nccwpck_require__(6726)
-const to = __nccwpck_require__(3758).to
-const uniqueFilename = __nccwpck_require__(217)
-const Y = __nccwpck_require__(4217)
-
-const writeFileAsync = BB.promisify(fs.writeFile)
-
-module.exports = write
-function write (cache, data, opts) {
-  opts = opts || {}
-  if (opts.algorithms && opts.algorithms.length > 1) {
-    throw new Error(
-      Y`opts.algorithms only supports a single algorithm for now`
-    )
-  }
-  if (typeof opts.size === 'number' && data.length !== opts.size) {
-    return BB.reject(sizeError(opts.size, data.length))
-  }
-  const sri = ssri.fromData(data, {
-    algorithms: opts.algorithms
-  })
-  if (opts.integrity && !ssri.checkData(data, opts.integrity, opts)) {
-    return BB.reject(checksumError(opts.integrity, sri))
-  }
-  return BB.using(makeTmp(cache, opts), tmp => (
-    writeFileAsync(
-      tmp.target, data, { flag: 'wx' }
-    ).then(() => (
-      moveToDestination(tmp, cache, sri, opts)
-    ))
-  )).then(() => ({ integrity: sri, size: data.length }))
-}
-
-module.exports.stream = writeStream
-function writeStream (cache, opts) {
-  opts = opts || {}
-  const inputStream = new PassThrough()
-  let inputErr = false
-  function errCheck () {
-    if (inputErr) { throw inputErr }
-  }
-
-  let allDone
-  const ret = to((c, n, cb) => {
-    if (!allDone) {
-      allDone = handleContent(inputStream, cache, opts, errCheck)
-    }
-    inputStream.write(c, n, cb)
-  }, cb => {
-    inputStream.end(() => {
-      if (!allDone) {
-        const e = new Error(Y`Cache input stream was empty`)
-        e.code = 'ENODATA'
-        return ret.emit('error', e)
-      }
-      allDone.then(res => {
-        res.integrity && ret.emit('integrity', res.integrity)
-        res.size !== null && ret.emit('size', res.size)
-        cb()
-      }, e => {
-        ret.emit('error', e)
-      })
-    })
-  })
-  ret.once('error', e => {
-    inputErr = e
-  })
-  return ret
-}
-
-function handleContent (inputStream, cache, opts, errCheck) {
-  return BB.using(makeTmp(cache, opts), tmp => {
-    errCheck()
-    return pipeToTmp(
-      inputStream, cache, tmp.target, opts, errCheck
-    ).then(res => {
-      return moveToDestination(
-        tmp, cache, res.integrity, opts, errCheck
-      ).then(() => res)
-    })
-  })
-}
-
-function pipeToTmp (inputStream, cache, tmpTarget, opts, errCheck) {
-  return BB.resolve().then(() => {
-    let integrity
-    let size
-    const hashStream = ssri.integrityStream({
-      integrity: opts.integrity,
-      algorithms: opts.algorithms,
-      size: opts.size
-    }).on('integrity', s => {
-      integrity = s
-    }).on('size', s => {
-      size = s
-    })
-    const outStream = fs.createWriteStream(tmpTarget, {
-      flags: 'wx'
-    })
-    errCheck()
-    return pipe(inputStream, hashStream, outStream).then(() => {
-      return { integrity, size }
-    }).catch(err => {
-      return rimraf(tmpTarget).then(() => { throw err })
-    })
-  })
-}
-
-function makeTmp (cache, opts) {
-  const tmpTarget = uniqueFilename(path.join(cache, 'tmp'), opts.tmpPrefix)
-  return fixOwner.mkdirfix(
-    cache, path.dirname(tmpTarget)
-  ).then(() => ({
-    target: tmpTarget,
-    moved: false
-  })).disposer(tmp => (!tmp.moved && rimraf(tmp.target)))
-}
-
-function moveToDestination (tmp, cache, sri, opts, errCheck) {
-  errCheck && errCheck()
-  const destination = contentPath(cache, sri)
-  const destDir = path.dirname(destination)
-
-  return fixOwner.mkdirfix(
-    cache, destDir
-  ).then(() => {
-    errCheck && errCheck()
-    return moveFile(tmp.target, destination)
-  }).then(() => {
-    errCheck && errCheck()
-    tmp.moved = true
-    return fixOwner.chownr(cache, destination)
-  })
-}
-
-function sizeError (expected, found) {
-  var err = new Error(Y`Bad data size: expected inserted data to be ${expected} bytes, but got ${found} instead`)
-  err.expected = expected
-  err.found = found
-  err.code = 'EBADSIZE'
-  return err
-}
-
-function checksumError (expected, found) {
-  var err = new Error(Y`Integrity check failed:
-  Wanted: ${expected}
-   Found: ${found}`)
-  err.code = 'EINTEGRITY'
-  err.expected = expected
-  err.found = found
-  return err
-}
-
-
-/***/ }),
-
-/***/ 595:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const contentPath = __nccwpck_require__(3491)
-const crypto = __nccwpck_require__(6417)
-const figgyPudding = __nccwpck_require__(3571)
-const fixOwner = __nccwpck_require__(1191)
-const fs = __nccwpck_require__(7758)
-const hashToSegments = __nccwpck_require__(2700)
-const ms = __nccwpck_require__(3758)
-const path = __nccwpck_require__(5622)
-const ssri = __nccwpck_require__(6726)
-const Y = __nccwpck_require__(4217)
-
-const indexV = __nccwpck_require__(1666)/* ["cache-version"].index */ .Jw.K
-
-const appendFileAsync = BB.promisify(fs.appendFile)
-const readFileAsync = BB.promisify(fs.readFile)
-const readdirAsync = BB.promisify(fs.readdir)
-const concat = ms.concat
-const from = ms.from
-
-module.exports.NotFoundError = class NotFoundError extends Error {
-  constructor (cache, key) {
-    super(Y`No cache entry for \`${key}\` found in \`${cache}\``)
-    this.code = 'ENOENT'
-    this.cache = cache
-    this.key = key
-  }
-}
-
-const IndexOpts = figgyPudding({
-  metadata: {},
-  size: {}
-})
-
-module.exports.insert = insert
-function insert (cache, key, integrity, opts) {
-  opts = IndexOpts(opts)
-  const bucket = bucketPath(cache, key)
-  const entry = {
-    key,
-    integrity: integrity && ssri.stringify(integrity),
-    time: Date.now(),
-    size: opts.size,
-    metadata: opts.metadata
-  }
-  return fixOwner.mkdirfix(
-    cache, path.dirname(bucket)
-  ).then(() => {
-    const stringified = JSON.stringify(entry)
-    // NOTE - Cleverness ahoy!
-    //
-    // This works because it's tremendously unlikely for an entry to corrupt
-    // another while still preserving the string length of the JSON in
-    // question. So, we just slap the length in there and verify it on read.
-    //
-    // Thanks to @isaacs for the whiteboarding session that ended up with this.
-    return appendFileAsync(
-      bucket, `\n${hashEntry(stringified)}\t${stringified}`
-    )
-  }).then(
-    () => fixOwner.chownr(cache, bucket)
-  ).catch({ code: 'ENOENT' }, () => {
-    // There's a class of race conditions that happen when things get deleted
-    // during fixOwner, or between the two mkdirfix/chownr calls.
-    //
-    // It's perfectly fine to just not bother in those cases and lie
-    // that the index entry was written. Because it's a cache.
-  }).then(() => {
-    return formatEntry(cache, entry)
-  })
-}
-
-module.exports.insert.sync = insertSync
-function insertSync (cache, key, integrity, opts) {
-  opts = IndexOpts(opts)
-  const bucket = bucketPath(cache, key)
-  const entry = {
-    key,
-    integrity: integrity && ssri.stringify(integrity),
-    time: Date.now(),
-    size: opts.size,
-    metadata: opts.metadata
-  }
-  fixOwner.mkdirfix.sync(cache, path.dirname(bucket))
-  const stringified = JSON.stringify(entry)
-  fs.appendFileSync(
-    bucket, `\n${hashEntry(stringified)}\t${stringified}`
-  )
-  try {
-    fixOwner.chownr.sync(cache, bucket)
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      throw err
-    }
-  }
-  return formatEntry(cache, entry)
-}
-
-module.exports.find = find
-function find (cache, key) {
-  const bucket = bucketPath(cache, key)
-  return bucketEntries(bucket).then(entries => {
-    return entries.reduce((latest, next) => {
-      if (next && next.key === key) {
-        return formatEntry(cache, next)
-      } else {
-        return latest
-      }
-    }, null)
-  }).catch(err => {
-    if (err.code === 'ENOENT') {
-      return null
-    } else {
-      throw err
-    }
-  })
-}
-
-module.exports.find.sync = findSync
-function findSync (cache, key) {
-  const bucket = bucketPath(cache, key)
-  try {
-    return bucketEntriesSync(bucket).reduce((latest, next) => {
-      if (next && next.key === key) {
-        return formatEntry(cache, next)
-      } else {
-        return latest
-      }
-    }, null)
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      return null
-    } else {
-      throw err
-    }
-  }
-}
-
-module.exports.delete = del
-function del (cache, key, opts) {
-  return insert(cache, key, null, opts)
-}
-
-module.exports.delete.sync = delSync
-function delSync (cache, key, opts) {
-  return insertSync(cache, key, null, opts)
-}
-
-module.exports.lsStream = lsStream
-function lsStream (cache) {
-  const indexDir = bucketDir(cache)
-  const stream = from.obj()
-
-  // "/cachename/*"
-  readdirOrEmpty(indexDir).map(bucket => {
-    const bucketPath = path.join(indexDir, bucket)
-
-    // "/cachename/<bucket 0xFF>/*"
-    return readdirOrEmpty(bucketPath).map(subbucket => {
-      const subbucketPath = path.join(bucketPath, subbucket)
-
-      // "/cachename/<bucket 0xFF>/<bucket 0xFF>/*"
-      return readdirOrEmpty(subbucketPath).map(entry => {
-        const getKeyToEntry = bucketEntries(
-          path.join(subbucketPath, entry)
-        ).reduce((acc, entry) => {
-          acc.set(entry.key, entry)
-          return acc
-        }, new Map())
-
-        return getKeyToEntry.then(reduced => {
-          for (let entry of reduced.values()) {
-            const formatted = formatEntry(cache, entry)
-            formatted && stream.push(formatted)
-          }
-        }).catch({ code: 'ENOENT' }, nop)
-      })
-    })
-  }).then(() => {
-    stream.push(null)
-  }, err => {
-    stream.emit('error', err)
-  })
-
-  return stream
-}
-
-module.exports.ls = ls
-function ls (cache) {
-  return BB.fromNode(cb => {
-    lsStream(cache).on('error', cb).pipe(concat(entries => {
-      cb(null, entries.reduce((acc, xs) => {
-        acc[xs.key] = xs
-        return acc
-      }, {}))
-    }))
-  })
-}
-
-function bucketEntries (bucket, filter) {
-  return readFileAsync(
-    bucket, 'utf8'
-  ).then(data => _bucketEntries(data, filter))
-}
-
-function bucketEntriesSync (bucket, filter) {
-  const data = fs.readFileSync(bucket, 'utf8')
-  return _bucketEntries(data, filter)
-}
-
-function _bucketEntries (data, filter) {
-  let entries = []
-  data.split('\n').forEach(entry => {
-    if (!entry) { return }
-    const pieces = entry.split('\t')
-    if (!pieces[1] || hashEntry(pieces[1]) !== pieces[0]) {
-      // Hash is no good! Corruption or malice? Doesn't matter!
-      // EJECT EJECT
-      return
-    }
-    let obj
-    try {
-      obj = JSON.parse(pieces[1])
-    } catch (e) {
-      // Entry is corrupted!
-      return
-    }
-    if (obj) {
-      entries.push(obj)
-    }
-  })
-  return entries
-}
-
-module.exports._bucketDir = bucketDir
-function bucketDir (cache) {
-  return path.join(cache, `index-v${indexV}`)
-}
-
-module.exports._bucketPath = bucketPath
-function bucketPath (cache, key) {
-  const hashed = hashKey(key)
-  return path.join.apply(path, [bucketDir(cache)].concat(
-    hashToSegments(hashed)
-  ))
-}
-
-module.exports._hashKey = hashKey
-function hashKey (key) {
-  return hash(key, 'sha256')
-}
-
-module.exports._hashEntry = hashEntry
-function hashEntry (str) {
-  return hash(str, 'sha1')
-}
-
-function hash (str, digest) {
-  return crypto
-    .createHash(digest)
-    .update(str)
-    .digest('hex')
-}
-
-function formatEntry (cache, entry) {
-  // Treat null digests as deletions. They'll shadow any previous entries.
-  if (!entry.integrity) { return null }
-  return {
-    key: entry.key,
-    integrity: entry.integrity,
-    path: contentPath(cache, entry.integrity),
-    size: entry.size,
-    time: entry.time,
-    metadata: entry.metadata
-  }
-}
-
-function readdirOrEmpty (dir) {
-  return readdirAsync(dir)
-    .catch({ code: 'ENOENT' }, () => [])
-    .catch({ code: 'ENOTDIR' }, () => [])
-}
-
-function nop () {
-}
-
-
-/***/ }),
-
-/***/ 5575:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const LRU = __nccwpck_require__(738)
-
-const MAX_SIZE = 50 * 1024 * 1024 // 50MB
-const MAX_AGE = 3 * 60 * 1000
-
-let MEMOIZED = new LRU({
-  max: MAX_SIZE,
-  maxAge: MAX_AGE,
-  length: (entry, key) => {
-    if (key.startsWith('key:')) {
-      return entry.data.length
-    } else if (key.startsWith('digest:')) {
-      return entry.length
-    }
-  }
-})
-
-module.exports.clearMemoized = clearMemoized
-function clearMemoized () {
-  const old = {}
-  MEMOIZED.forEach((v, k) => {
-    old[k] = v
-  })
-  MEMOIZED.reset()
-  return old
-}
-
-module.exports.put = put
-function put (cache, entry, data, opts) {
-  pickMem(opts).set(`key:${cache}:${entry.key}`, { entry, data })
-  putDigest(cache, entry.integrity, data, opts)
-}
-
-module.exports.put.byDigest = putDigest
-function putDigest (cache, integrity, data, opts) {
-  pickMem(opts).set(`digest:${cache}:${integrity}`, data)
-}
-
-module.exports.get = get
-function get (cache, key, opts) {
-  return pickMem(opts).get(`key:${cache}:${key}`)
-}
-
-module.exports.get.byDigest = getDigest
-function getDigest (cache, integrity, opts) {
-  return pickMem(opts).get(`digest:${cache}:${integrity}`)
-}
-
-class ObjProxy {
-  constructor (obj) {
-    this.obj = obj
-  }
-  get (key) { return this.obj[key] }
-  set (key, val) { this.obj[key] = val }
-}
-
-function pickMem (opts) {
-  if (!opts || !opts.memoize) {
-    return MEMOIZED
-  } else if (opts.memoize.get && opts.memoize.set) {
-    return opts.memoize
-  } else if (typeof opts.memoize === 'object') {
-    return new ObjProxy(opts.memoize)
-  } else {
-    return MEMOIZED
-  }
-}
-
-
-/***/ }),
-
-/***/ 1191:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const chownr = BB.promisify(__nccwpck_require__(9051))
-const mkdirp = BB.promisify(__nccwpck_require__(1644))
-const inflight = __nccwpck_require__(439)
-const inferOwner = __nccwpck_require__(5476)
-
-// Memoize getuid()/getgid() calls.
-// patch process.setuid/setgid to invalidate cached value on change
-const self = { uid: null, gid: null }
-const getSelf = () => {
-  if (typeof self.uid !== 'number') {
-    self.uid = process.getuid()
-    const setuid = process.setuid
-    process.setuid = (uid) => {
-      self.uid = null
-      process.setuid = setuid
-      return process.setuid(uid)
-    }
-  }
-  if (typeof self.gid !== 'number') {
-    self.gid = process.getgid()
-    const setgid = process.setgid
-    process.setgid = (gid) => {
-      self.gid = null
-      process.setgid = setgid
-      return process.setgid(gid)
-    }
-  }
-}
-
-module.exports.chownr = fixOwner
-function fixOwner (cache, filepath) {
-  if (!process.getuid) {
-    // This platform doesn't need ownership fixing
-    return BB.resolve()
-  }
-
-  getSelf()
-  if (self.uid !== 0) {
-    // almost certainly can't chown anyway
-    return BB.resolve()
-  }
-
-  return BB.resolve(inferOwner(cache)).then(owner => {
-    const { uid, gid } = owner
-
-    // No need to override if it's already what we used.
-    if (self.uid === uid && self.gid === gid) {
-      return
-    }
-
-    return inflight(
-      'fixOwner: fixing ownership on ' + filepath,
-      () => chownr(
-        filepath,
-        typeof uid === 'number' ? uid : self.uid,
-        typeof gid === 'number' ? gid : self.gid
-      ).catch({ code: 'ENOENT' }, () => null)
-    )
-  })
-}
-
-module.exports.chownr.sync = fixOwnerSync
-function fixOwnerSync (cache, filepath) {
-  if (!process.getuid) {
-    // This platform doesn't need ownership fixing
-    return
-  }
-  const { uid, gid } = inferOwner.sync(cache)
-  getSelf()
-  if (self.uid === uid && self.gid === gid) {
-    // No need to override if it's already what we used.
-    return
-  }
-  try {
-    chownr.sync(
-      filepath,
-      typeof uid === 'number' ? uid : self.uid,
-      typeof gid === 'number' ? gid : self.gid
-    )
-  } catch (err) {
-    // only catch ENOENT, any other error is a problem.
-    if (err.code === 'ENOENT') {
-      return null
-    }
-    throw err
-  }
-}
-
-module.exports.mkdirfix = mkdirfix
-function mkdirfix (cache, p, cb) {
-  // we have to infer the owner _before_ making the directory, even though
-  // we aren't going to use the results, since the cache itself might not
-  // exist yet.  If we mkdirp it, then our current uid/gid will be assumed
-  // to be correct if it creates the cache folder in the process.
-  return BB.resolve(inferOwner(cache)).then(() => {
-    return mkdirp(p).then(made => {
-      if (made) {
-        return fixOwner(cache, made).then(() => made)
-      }
-    }).catch({ code: 'EEXIST' }, () => {
-      // There's a race in mkdirp!
-      return fixOwner(cache, p).then(() => null)
-    })
-  })
-}
-
-module.exports.mkdirfix.sync = mkdirfixSync
-function mkdirfixSync (cache, p) {
-  try {
-    inferOwner.sync(cache)
-    const made = mkdirp.sync(p)
-    if (made) {
-      fixOwnerSync(cache, made)
-      return made
-    }
-  } catch (err) {
-    if (err.code === 'EEXIST') {
-      fixOwnerSync(cache, p)
-      return null
-    } else {
-      throw err
-    }
-  }
-}
-
-
-/***/ }),
-
-/***/ 2700:
-/***/ (function(module) {
-
-"use strict";
-
-
-module.exports = hashToSegments
-
-function hashToSegments (hash) {
-  return [
-    hash.slice(0, 2),
-    hash.slice(2, 4),
-    hash.slice(4)
-  ]
-}
-
-
-/***/ }),
-
-/***/ 5604:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const fs = __nccwpck_require__(7758)
-const BB = __nccwpck_require__(8710)
-const chmod = BB.promisify(fs.chmod)
-const unlink = BB.promisify(fs.unlink)
-let move
-let pinflight
-
-module.exports = moveFile
-function moveFile (src, dest) {
-  // This isn't quite an fs.rename -- the assumption is that
-  // if `dest` already exists, and we get certain errors while
-  // trying to move it, we should just not bother.
-  //
-  // In the case of cache corruption, users will receive an
-  // EINTEGRITY error elsewhere, and can remove the offending
-  // content their own way.
-  //
-  // Note that, as the name suggests, this strictly only supports file moves.
-  return BB.fromNode(cb => {
-    fs.link(src, dest, err => {
-      if (err) {
-        if (err.code === 'EEXIST' || err.code === 'EBUSY') {
-          // file already exists, so whatever
-        } else if (err.code === 'EPERM' && process.platform === 'win32') {
-          // file handle stayed open even past graceful-fs limits
-        } else {
-          return cb(err)
-        }
-      }
-      return cb()
-    })
-  }).then(() => {
-    // content should never change for any reason, so make it read-only
-    return BB.join(unlink(src), process.platform !== 'win32' && chmod(dest, '0444'))
-  }).catch(() => {
-    if (!pinflight) { pinflight = __nccwpck_require__(439) }
-    return pinflight('cacache-move-file:' + dest, () => {
-      return BB.promisify(fs.stat)(dest).catch(err => {
-        if (err.code !== 'ENOENT') {
-          // Something else is wrong here. Bail bail bail
-          throw err
-        }
-        // file doesn't already exist! let's try a rename -> copy fallback
-        if (!move) { move = __nccwpck_require__(9767) }
-        return move(src, dest, { BB, fs })
-      })
-    })
-  })
-}
-
-
-/***/ }),
-
-/***/ 644:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const figgyPudding = __nccwpck_require__(3571)
-const fixOwner = __nccwpck_require__(1191)
-const path = __nccwpck_require__(5622)
-const rimraf = BB.promisify(__nccwpck_require__(9219))
-const uniqueFilename = __nccwpck_require__(217)
-
-const TmpOpts = figgyPudding({
-  tmpPrefix: {}
-})
-
-module.exports.mkdir = mktmpdir
-function mktmpdir (cache, opts) {
-  opts = TmpOpts(opts)
-  const tmpTarget = uniqueFilename(path.join(cache, 'tmp'), opts.tmpPrefix)
-  return fixOwner.mkdirfix(cache, tmpTarget).then(() => {
-    return tmpTarget
-  })
-}
-
-module.exports.withTmp = withTmp
-function withTmp (cache, opts, cb) {
-  if (!cb) {
-    cb = opts
-    opts = null
-  }
-  opts = TmpOpts(opts)
-  return BB.using(mktmpdir(cache, opts).disposer(rimraf), cb)
-}
-
-module.exports.fix = fixtmpdir
-function fixtmpdir (cache) {
-  return fixOwner(cache, path.join(cache, 'tmp'))
-}
-
-
-/***/ }),
-
-/***/ 4217:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const path = __nccwpck_require__(5622)
-const y18n = __nccwpck_require__(8138)({
-  directory: __nccwpck_require__.ab + "locales1",
-  locale: 'en',
-  updateFiles: process.env.CACACHE_UPDATE_LOCALE_FILES === 'true'
-})
-
-module.exports = yTag
-function yTag (parts) {
-  let str = ''
-  parts.forEach((part, i) => {
-    const arg = arguments[i + 1]
-    str += part
-    if (arg) {
-      str += '%s'
-    }
-  })
-  return y18n.__.apply(null, [str].concat([].slice.call(arguments, 1)))
-}
-
-module.exports.setLocale = locale => {
-  y18n.setLocale(locale)
-}
-
-
-/***/ }),
-
-/***/ 584:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const contentPath = __nccwpck_require__(3491)
-const figgyPudding = __nccwpck_require__(3571)
-const finished = BB.promisify(__nccwpck_require__(3758).finished)
-const fixOwner = __nccwpck_require__(1191)
-const fs = __nccwpck_require__(7758)
-const glob = BB.promisify(__nccwpck_require__(5410))
-const index = __nccwpck_require__(595)
-const path = __nccwpck_require__(5622)
-const rimraf = BB.promisify(__nccwpck_require__(9219))
-const ssri = __nccwpck_require__(6726)
-
-BB.promisifyAll(fs)
-
-const VerifyOpts = figgyPudding({
-  concurrency: {
-    default: 20
-  },
-  filter: {},
-  log: {
-    default: { silly () {} }
-  }
-})
-
-module.exports = verify
-function verify (cache, opts) {
-  opts = VerifyOpts(opts)
-  opts.log.silly('verify', 'verifying cache at', cache)
-  return BB.reduce([
-    markStartTime,
-    fixPerms,
-    garbageCollect,
-    rebuildIndex,
-    cleanTmp,
-    writeVerifile,
-    markEndTime
-  ], (stats, step, i) => {
-    const label = step.name || `step #${i}`
-    const start = new Date()
-    return BB.resolve(step(cache, opts)).then(s => {
-      s && Object.keys(s).forEach(k => {
-        stats[k] = s[k]
-      })
-      const end = new Date()
-      if (!stats.runTime) { stats.runTime = {} }
-      stats.runTime[label] = end - start
-      return stats
-    })
-  }, {}).tap(stats => {
-    stats.runTime.total = stats.endTime - stats.startTime
-    opts.log.silly('verify', 'verification finished for', cache, 'in', `${stats.runTime.total}ms`)
-  })
-}
-
-function markStartTime (cache, opts) {
-  return { startTime: new Date() }
-}
-
-function markEndTime (cache, opts) {
-  return { endTime: new Date() }
-}
-
-function fixPerms (cache, opts) {
-  opts.log.silly('verify', 'fixing cache permissions')
-  return fixOwner.mkdirfix(cache, cache).then(() => {
-    // TODO - fix file permissions too
-    return fixOwner.chownr(cache, cache)
-  }).then(() => null)
-}
-
-// Implements a naive mark-and-sweep tracing garbage collector.
-//
-// The algorithm is basically as follows:
-// 1. Read (and filter) all index entries ("pointers")
-// 2. Mark each integrity value as "live"
-// 3. Read entire filesystem tree in `content-vX/` dir
-// 4. If content is live, verify its checksum and delete it if it fails
-// 5. If content is not marked as live, rimraf it.
-//
-function garbageCollect (cache, opts) {
-  opts.log.silly('verify', 'garbage collecting content')
-  const indexStream = index.lsStream(cache)
-  const liveContent = new Set()
-  indexStream.on('data', entry => {
-    if (opts.filter && !opts.filter(entry)) { return }
-    liveContent.add(entry.integrity.toString())
-  })
-  return finished(indexStream).then(() => {
-    const contentDir = contentPath._contentDir(cache)
-    return glob(path.join(contentDir, '**'), {
-      follow: false,
-      nodir: true,
-      nosort: true
-    }).then(files => {
-      return BB.resolve({
-        verifiedContent: 0,
-        reclaimedCount: 0,
-        reclaimedSize: 0,
-        badContentCount: 0,
-        keptSize: 0
-      }).tap((stats) => BB.map(files, (f) => {
-        const split = f.split(/[/\\]/)
-        const digest = split.slice(split.length - 3).join('')
-        const algo = split[split.length - 4]
-        const integrity = ssri.fromHex(digest, algo)
-        if (liveContent.has(integrity.toString())) {
-          return verifyContent(f, integrity).then(info => {
-            if (!info.valid) {
-              stats.reclaimedCount++
-              stats.badContentCount++
-              stats.reclaimedSize += info.size
-            } else {
-              stats.verifiedContent++
-              stats.keptSize += info.size
-            }
-            return stats
-          })
-        } else {
-          // No entries refer to this content. We can delete.
-          stats.reclaimedCount++
-          return fs.statAsync(f).then(s => {
-            return rimraf(f).then(() => {
-              stats.reclaimedSize += s.size
-              return stats
-            })
-          })
-        }
-      }, { concurrency: opts.concurrency }))
-    })
-  })
-}
-
-function verifyContent (filepath, sri) {
-  return fs.statAsync(filepath).then(stat => {
-    const contentInfo = {
-      size: stat.size,
-      valid: true
-    }
-    return ssri.checkStream(
-      fs.createReadStream(filepath),
-      sri
-    ).catch(err => {
-      if (err.code !== 'EINTEGRITY') { throw err }
-      return rimraf(filepath).then(() => {
-        contentInfo.valid = false
-      })
-    }).then(() => contentInfo)
-  }).catch({ code: 'ENOENT' }, () => ({ size: 0, valid: false }))
-}
-
-function rebuildIndex (cache, opts) {
-  opts.log.silly('verify', 'rebuilding index')
-  return index.ls(cache).then(entries => {
-    const stats = {
-      missingContent: 0,
-      rejectedEntries: 0,
-      totalEntries: 0
-    }
-    const buckets = {}
-    for (let k in entries) {
-      if (entries.hasOwnProperty(k)) {
-        const hashed = index._hashKey(k)
-        const entry = entries[k]
-        const excluded = opts.filter && !opts.filter(entry)
-        excluded && stats.rejectedEntries++
-        if (buckets[hashed] && !excluded) {
-          buckets[hashed].push(entry)
-        } else if (buckets[hashed] && excluded) {
-          // skip
-        } else if (excluded) {
-          buckets[hashed] = []
-          buckets[hashed]._path = index._bucketPath(cache, k)
-        } else {
-          buckets[hashed] = [entry]
-          buckets[hashed]._path = index._bucketPath(cache, k)
-        }
-      }
-    }
-    return BB.map(Object.keys(buckets), key => {
-      return rebuildBucket(cache, buckets[key], stats, opts)
-    }, { concurrency: opts.concurrency }).then(() => stats)
-  })
-}
-
-function rebuildBucket (cache, bucket, stats, opts) {
-  return fs.truncateAsync(bucket._path).then(() => {
-    // This needs to be serialized because cacache explicitly
-    // lets very racy bucket conflicts clobber each other.
-    return BB.mapSeries(bucket, entry => {
-      const content = contentPath(cache, entry.integrity)
-      return fs.statAsync(content).then(() => {
-        return index.insert(cache, entry.key, entry.integrity, {
-          metadata: entry.metadata,
-          size: entry.size
-        }).then(() => { stats.totalEntries++ })
-      }).catch({ code: 'ENOENT' }, () => {
-        stats.rejectedEntries++
-        stats.missingContent++
-      })
-    })
-  })
-}
-
-function cleanTmp (cache, opts) {
-  opts.log.silly('verify', 'cleaning tmp directory')
-  return rimraf(path.join(cache, 'tmp'))
-}
-
-function writeVerifile (cache, opts) {
-  const verifile = path.join(cache, '_lastverified')
-  opts.log.silly('verify', 'writing verifile to ' + verifile)
-  try {
-    return fs.writeFileAsync(verifile, '' + (+(new Date())))
-  } finally {
-    fixOwner.chownr.sync(cache, verifile)
-  }
-}
-
-module.exports.lastRun = lastRun
-function lastRun (cache) {
-  return fs.readFileAsync(
-    path.join(cache, '_lastverified'), 'utf8'
-  ).then(data => new Date(+data))
-}
-
-
-/***/ }),
-
-/***/ 2341:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const ls = __nccwpck_require__(1048)
-const get = __nccwpck_require__(4761)
-const put = __nccwpck_require__(5576)
-const rm = __nccwpck_require__(4876)
-const verify = __nccwpck_require__(9869)
-const setLocale = __nccwpck_require__(4217).setLocale
-const clearMemoized = __nccwpck_require__(5575).clearMemoized
-const tmp = __nccwpck_require__(644)
-
-setLocale('en')
-
-const x = module.exports
-
-x.ls = cache => ls(cache)
-x.ls.stream = cache => ls.stream(cache)
-
-x.get = (cache, key, opts) => get(cache, key, opts)
-x.get.byDigest = (cache, hash, opts) => get.byDigest(cache, hash, opts)
-x.get.sync = (cache, key, opts) => get.sync(cache, key, opts)
-x.get.sync.byDigest = (cache, key, opts) => get.sync.byDigest(cache, key, opts)
-x.get.stream = (cache, key, opts) => get.stream(cache, key, opts)
-x.get.stream.byDigest = (cache, hash, opts) => get.stream.byDigest(cache, hash, opts)
-x.get.copy = (cache, key, dest, opts) => get.copy(cache, key, dest, opts)
-x.get.copy.byDigest = (cache, hash, dest, opts) => get.copy.byDigest(cache, hash, dest, opts)
-x.get.info = (cache, key) => get.info(cache, key)
-x.get.hasContent = (cache, hash) => get.hasContent(cache, hash)
-x.get.hasContent.sync = (cache, hash) => get.hasContent.sync(cache, hash)
-
-x.put = (cache, key, data, opts) => put(cache, key, data, opts)
-x.put.stream = (cache, key, opts) => put.stream(cache, key, opts)
-
-x.rm = (cache, key) => rm.entry(cache, key)
-x.rm.all = cache => rm.all(cache)
-x.rm.entry = x.rm
-x.rm.content = (cache, hash) => rm.content(cache, hash)
-
-x.setLocale = lang => setLocale(lang)
-x.clearMemoized = () => clearMemoized()
-
-x.tmp = {}
-x.tmp.mkdir = (cache, opts) => tmp.mkdir(cache, opts)
-x.tmp.withTmp = (cache, opts, cb) => tmp.withTmp(cache, opts, cb)
-
-x.verify = (cache, opts) => verify(cache, opts)
-x.verify.lastRun = cache => verify.lastRun(cache)
-
-
-/***/ }),
-
-/***/ 1048:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-var index = __nccwpck_require__(595)
-
-module.exports = index.ls
-module.exports.stream = index.lsStream
-
-
-/***/ }),
-
-/***/ 738:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-// A linked list to keep track of recently-used-ness
-const Yallist = __nccwpck_require__(8729)
-
-const MAX = Symbol('max')
-const LENGTH = Symbol('length')
-const LENGTH_CALCULATOR = Symbol('lengthCalculator')
-const ALLOW_STALE = Symbol('allowStale')
-const MAX_AGE = Symbol('maxAge')
-const DISPOSE = Symbol('dispose')
-const NO_DISPOSE_ON_SET = Symbol('noDisposeOnSet')
-const LRU_LIST = Symbol('lruList')
-const CACHE = Symbol('cache')
-const UPDATE_AGE_ON_GET = Symbol('updateAgeOnGet')
-
-const naiveLength = () => 1
-
-// lruList is a yallist where the head is the youngest
-// item, and the tail is the oldest.  the list contains the Hit
-// objects as the entries.
-// Each Hit object has a reference to its Yallist.Node.  This
-// never changes.
-//
-// cache is a Map (or PseudoMap) that matches the keys to
-// the Yallist.Node object.
-class LRUCache {
-  constructor (options) {
-    if (typeof options === 'number')
-      options = { max: options }
-
-    if (!options)
-      options = {}
-
-    if (options.max && (typeof options.max !== 'number' || options.max < 0))
-      throw new TypeError('max must be a non-negative number')
-    // Kind of weird to have a default max of Infinity, but oh well.
-    const max = this[MAX] = options.max || Infinity
-
-    const lc = options.length || naiveLength
-    this[LENGTH_CALCULATOR] = (typeof lc !== 'function') ? naiveLength : lc
-    this[ALLOW_STALE] = options.stale || false
-    if (options.maxAge && typeof options.maxAge !== 'number')
-      throw new TypeError('maxAge must be a number')
-    this[MAX_AGE] = options.maxAge || 0
-    this[DISPOSE] = options.dispose
-    this[NO_DISPOSE_ON_SET] = options.noDisposeOnSet || false
-    this[UPDATE_AGE_ON_GET] = options.updateAgeOnGet || false
-    this.reset()
-  }
-
-  // resize the cache when the max changes.
-  set max (mL) {
-    if (typeof mL !== 'number' || mL < 0)
-      throw new TypeError('max must be a non-negative number')
-
-    this[MAX] = mL || Infinity
-    trim(this)
-  }
-  get max () {
-    return this[MAX]
-  }
-
-  set allowStale (allowStale) {
-    this[ALLOW_STALE] = !!allowStale
-  }
-  get allowStale () {
-    return this[ALLOW_STALE]
-  }
-
-  set maxAge (mA) {
-    if (typeof mA !== 'number')
-      throw new TypeError('maxAge must be a non-negative number')
-
-    this[MAX_AGE] = mA
-    trim(this)
-  }
-  get maxAge () {
-    return this[MAX_AGE]
-  }
-
-  // resize the cache when the lengthCalculator changes.
-  set lengthCalculator (lC) {
-    if (typeof lC !== 'function')
-      lC = naiveLength
-
-    if (lC !== this[LENGTH_CALCULATOR]) {
-      this[LENGTH_CALCULATOR] = lC
-      this[LENGTH] = 0
-      this[LRU_LIST].forEach(hit => {
-        hit.length = this[LENGTH_CALCULATOR](hit.value, hit.key)
-        this[LENGTH] += hit.length
-      })
-    }
-    trim(this)
-  }
-  get lengthCalculator () { return this[LENGTH_CALCULATOR] }
-
-  get length () { return this[LENGTH] }
-  get itemCount () { return this[LRU_LIST].length }
-
-  rforEach (fn, thisp) {
-    thisp = thisp || this
-    for (let walker = this[LRU_LIST].tail; walker !== null;) {
-      const prev = walker.prev
-      forEachStep(this, fn, walker, thisp)
-      walker = prev
-    }
-  }
-
-  forEach (fn, thisp) {
-    thisp = thisp || this
-    for (let walker = this[LRU_LIST].head; walker !== null;) {
-      const next = walker.next
-      forEachStep(this, fn, walker, thisp)
-      walker = next
-    }
-  }
-
-  keys () {
-    return this[LRU_LIST].toArray().map(k => k.key)
-  }
-
-  values () {
-    return this[LRU_LIST].toArray().map(k => k.value)
-  }
-
-  reset () {
-    if (this[DISPOSE] &&
-        this[LRU_LIST] &&
-        this[LRU_LIST].length) {
-      this[LRU_LIST].forEach(hit => this[DISPOSE](hit.key, hit.value))
-    }
-
-    this[CACHE] = new Map() // hash of items by key
-    this[LRU_LIST] = new Yallist() // list of items in order of use recency
-    this[LENGTH] = 0 // length of items in the list
-  }
-
-  dump () {
-    return this[LRU_LIST].map(hit =>
-      isStale(this, hit) ? false : {
-        k: hit.key,
-        v: hit.value,
-        e: hit.now + (hit.maxAge || 0)
-      }).toArray().filter(h => h)
-  }
-
-  dumpLru () {
-    return this[LRU_LIST]
-  }
-
-  set (key, value, maxAge) {
-    maxAge = maxAge || this[MAX_AGE]
-
-    if (maxAge && typeof maxAge !== 'number')
-      throw new TypeError('maxAge must be a number')
-
-    const now = maxAge ? Date.now() : 0
-    const len = this[LENGTH_CALCULATOR](value, key)
-
-    if (this[CACHE].has(key)) {
-      if (len > this[MAX]) {
-        del(this, this[CACHE].get(key))
-        return false
-      }
-
-      const node = this[CACHE].get(key)
-      const item = node.value
-
-      // dispose of the old one before overwriting
-      // split out into 2 ifs for better coverage tracking
-      if (this[DISPOSE]) {
-        if (!this[NO_DISPOSE_ON_SET])
-          this[DISPOSE](key, item.value)
-      }
-
-      item.now = now
-      item.maxAge = maxAge
-      item.value = value
-      this[LENGTH] += len - item.length
-      item.length = len
-      this.get(key)
-      trim(this)
-      return true
-    }
-
-    const hit = new Entry(key, value, len, now, maxAge)
-
-    // oversized objects fall out of cache automatically.
-    if (hit.length > this[MAX]) {
-      if (this[DISPOSE])
-        this[DISPOSE](key, value)
-
-      return false
-    }
-
-    this[LENGTH] += hit.length
-    this[LRU_LIST].unshift(hit)
-    this[CACHE].set(key, this[LRU_LIST].head)
-    trim(this)
-    return true
-  }
-
-  has (key) {
-    if (!this[CACHE].has(key)) return false
-    const hit = this[CACHE].get(key).value
-    return !isStale(this, hit)
-  }
-
-  get (key) {
-    return get(this, key, true)
-  }
-
-  peek (key) {
-    return get(this, key, false)
-  }
-
-  pop () {
-    const node = this[LRU_LIST].tail
-    if (!node)
-      return null
-
-    del(this, node)
-    return node.value
-  }
-
-  del (key) {
-    del(this, this[CACHE].get(key))
-  }
-
-  load (arr) {
-    // reset the cache
-    this.reset()
-
-    const now = Date.now()
-    // A previous serialized cache has the most recent items first
-    for (let l = arr.length - 1; l >= 0; l--) {
-      const hit = arr[l]
-      const expiresAt = hit.e || 0
-      if (expiresAt === 0)
-        // the item was created without expiration in a non aged cache
-        this.set(hit.k, hit.v)
-      else {
-        const maxAge = expiresAt - now
-        // dont add already expired items
-        if (maxAge > 0) {
-          this.set(hit.k, hit.v, maxAge)
-        }
-      }
-    }
-  }
-
-  prune () {
-    this[CACHE].forEach((value, key) => get(this, key, false))
-  }
-}
-
-const get = (self, key, doUse) => {
-  const node = self[CACHE].get(key)
-  if (node) {
-    const hit = node.value
-    if (isStale(self, hit)) {
-      del(self, node)
-      if (!self[ALLOW_STALE])
-        return undefined
-    } else {
-      if (doUse) {
-        if (self[UPDATE_AGE_ON_GET])
-          node.value.now = Date.now()
-        self[LRU_LIST].unshiftNode(node)
-      }
-    }
-    return hit.value
-  }
-}
-
-const isStale = (self, hit) => {
-  if (!hit || (!hit.maxAge && !self[MAX_AGE]))
-    return false
-
-  const diff = Date.now() - hit.now
-  return hit.maxAge ? diff > hit.maxAge
-    : self[MAX_AGE] && (diff > self[MAX_AGE])
-}
-
-const trim = self => {
-  if (self[LENGTH] > self[MAX]) {
-    for (let walker = self[LRU_LIST].tail;
-      self[LENGTH] > self[MAX] && walker !== null;) {
-      // We know that we're about to delete this one, and also
-      // what the next least recently used key will be, so just
-      // go ahead and set it now.
-      const prev = walker.prev
-      del(self, walker)
-      walker = prev
-    }
-  }
-}
-
-const del = (self, node) => {
-  if (node) {
-    const hit = node.value
-    if (self[DISPOSE])
-      self[DISPOSE](hit.key, hit.value)
-
-    self[LENGTH] -= hit.length
-    self[CACHE].delete(hit.key)
-    self[LRU_LIST].removeNode(node)
-  }
-}
-
-class Entry {
-  constructor (key, value, length, now, maxAge) {
-    this.key = key
-    this.value = value
-    this.length = length
-    this.now = now
-    this.maxAge = maxAge || 0
-  }
-}
-
-const forEachStep = (self, fn, node, thisp) => {
-  let hit = node.value
-  if (isStale(self, hit)) {
-    del(self, node)
-    if (!self[ALLOW_STALE])
-      hit = undefined
-  }
-  if (hit)
-    fn.call(thisp, hit.value, hit.key, self)
-}
-
-module.exports = LRUCache
-
-
-/***/ }),
-
-/***/ 9146:
-/***/ (function(module) {
-
-"use strict";
-
-module.exports = function (Yallist) {
-  Yallist.prototype[Symbol.iterator] = function* () {
-    for (let walker = this.head; walker; walker = walker.next) {
-      yield walker.value
-    }
-  }
-}
-
-
-/***/ }),
-
-/***/ 8729:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-module.exports = Yallist
-
-Yallist.Node = Node
-Yallist.create = Yallist
-
-function Yallist (list) {
-  var self = this
-  if (!(self instanceof Yallist)) {
-    self = new Yallist()
-  }
-
-  self.tail = null
-  self.head = null
-  self.length = 0
-
-  if (list && typeof list.forEach === 'function') {
-    list.forEach(function (item) {
-      self.push(item)
-    })
-  } else if (arguments.length > 0) {
-    for (var i = 0, l = arguments.length; i < l; i++) {
-      self.push(arguments[i])
-    }
-  }
-
-  return self
-}
-
-Yallist.prototype.removeNode = function (node) {
-  if (node.list !== this) {
-    throw new Error('removing node which does not belong to this list')
-  }
-
-  var next = node.next
-  var prev = node.prev
-
-  if (next) {
-    next.prev = prev
-  }
-
-  if (prev) {
-    prev.next = next
-  }
-
-  if (node === this.head) {
-    this.head = next
-  }
-  if (node === this.tail) {
-    this.tail = prev
-  }
-
-  node.list.length--
-  node.next = null
-  node.prev = null
-  node.list = null
-
-  return next
-}
-
-Yallist.prototype.unshiftNode = function (node) {
-  if (node === this.head) {
-    return
-  }
-
-  if (node.list) {
-    node.list.removeNode(node)
-  }
-
-  var head = this.head
-  node.list = this
-  node.next = head
-  if (head) {
-    head.prev = node
-  }
-
-  this.head = node
-  if (!this.tail) {
-    this.tail = node
-  }
-  this.length++
-}
-
-Yallist.prototype.pushNode = function (node) {
-  if (node === this.tail) {
-    return
-  }
-
-  if (node.list) {
-    node.list.removeNode(node)
-  }
-
-  var tail = this.tail
-  node.list = this
-  node.prev = tail
-  if (tail) {
-    tail.next = node
-  }
-
-  this.tail = node
-  if (!this.head) {
-    this.head = node
-  }
-  this.length++
-}
-
-Yallist.prototype.push = function () {
-  for (var i = 0, l = arguments.length; i < l; i++) {
-    push(this, arguments[i])
-  }
-  return this.length
-}
-
-Yallist.prototype.unshift = function () {
-  for (var i = 0, l = arguments.length; i < l; i++) {
-    unshift(this, arguments[i])
-  }
-  return this.length
-}
-
-Yallist.prototype.pop = function () {
-  if (!this.tail) {
-    return undefined
-  }
-
-  var res = this.tail.value
-  this.tail = this.tail.prev
-  if (this.tail) {
-    this.tail.next = null
-  } else {
-    this.head = null
-  }
-  this.length--
-  return res
-}
-
-Yallist.prototype.shift = function () {
-  if (!this.head) {
-    return undefined
-  }
-
-  var res = this.head.value
-  this.head = this.head.next
-  if (this.head) {
-    this.head.prev = null
-  } else {
-    this.tail = null
-  }
-  this.length--
-  return res
-}
-
-Yallist.prototype.forEach = function (fn, thisp) {
-  thisp = thisp || this
-  for (var walker = this.head, i = 0; walker !== null; i++) {
-    fn.call(thisp, walker.value, i, this)
-    walker = walker.next
-  }
-}
-
-Yallist.prototype.forEachReverse = function (fn, thisp) {
-  thisp = thisp || this
-  for (var walker = this.tail, i = this.length - 1; walker !== null; i--) {
-    fn.call(thisp, walker.value, i, this)
-    walker = walker.prev
-  }
-}
-
-Yallist.prototype.get = function (n) {
-  for (var i = 0, walker = this.head; walker !== null && i < n; i++) {
-    // abort out of the list early if we hit a cycle
-    walker = walker.next
-  }
-  if (i === n && walker !== null) {
-    return walker.value
-  }
-}
-
-Yallist.prototype.getReverse = function (n) {
-  for (var i = 0, walker = this.tail; walker !== null && i < n; i++) {
-    // abort out of the list early if we hit a cycle
-    walker = walker.prev
-  }
-  if (i === n && walker !== null) {
-    return walker.value
-  }
-}
-
-Yallist.prototype.map = function (fn, thisp) {
-  thisp = thisp || this
-  var res = new Yallist()
-  for (var walker = this.head; walker !== null;) {
-    res.push(fn.call(thisp, walker.value, this))
-    walker = walker.next
-  }
-  return res
-}
-
-Yallist.prototype.mapReverse = function (fn, thisp) {
-  thisp = thisp || this
-  var res = new Yallist()
-  for (var walker = this.tail; walker !== null;) {
-    res.push(fn.call(thisp, walker.value, this))
-    walker = walker.prev
-  }
-  return res
-}
-
-Yallist.prototype.reduce = function (fn, initial) {
-  var acc
-  var walker = this.head
-  if (arguments.length > 1) {
-    acc = initial
-  } else if (this.head) {
-    walker = this.head.next
-    acc = this.head.value
-  } else {
-    throw new TypeError('Reduce of empty list with no initial value')
-  }
-
-  for (var i = 0; walker !== null; i++) {
-    acc = fn(acc, walker.value, i)
-    walker = walker.next
-  }
-
-  return acc
-}
-
-Yallist.prototype.reduceReverse = function (fn, initial) {
-  var acc
-  var walker = this.tail
-  if (arguments.length > 1) {
-    acc = initial
-  } else if (this.tail) {
-    walker = this.tail.prev
-    acc = this.tail.value
-  } else {
-    throw new TypeError('Reduce of empty list with no initial value')
-  }
-
-  for (var i = this.length - 1; walker !== null; i--) {
-    acc = fn(acc, walker.value, i)
-    walker = walker.prev
-  }
-
-  return acc
-}
-
-Yallist.prototype.toArray = function () {
-  var arr = new Array(this.length)
-  for (var i = 0, walker = this.head; walker !== null; i++) {
-    arr[i] = walker.value
-    walker = walker.next
-  }
-  return arr
-}
-
-Yallist.prototype.toArrayReverse = function () {
-  var arr = new Array(this.length)
-  for (var i = 0, walker = this.tail; walker !== null; i++) {
-    arr[i] = walker.value
-    walker = walker.prev
-  }
-  return arr
-}
-
-Yallist.prototype.slice = function (from, to) {
-  to = to || this.length
-  if (to < 0) {
-    to += this.length
-  }
-  from = from || 0
-  if (from < 0) {
-    from += this.length
-  }
-  var ret = new Yallist()
-  if (to < from || to < 0) {
-    return ret
-  }
-  if (from < 0) {
-    from = 0
-  }
-  if (to > this.length) {
-    to = this.length
-  }
-  for (var i = 0, walker = this.head; walker !== null && i < from; i++) {
-    walker = walker.next
-  }
-  for (; walker !== null && i < to; i++, walker = walker.next) {
-    ret.push(walker.value)
-  }
-  return ret
-}
-
-Yallist.prototype.sliceReverse = function (from, to) {
-  to = to || this.length
-  if (to < 0) {
-    to += this.length
-  }
-  from = from || 0
-  if (from < 0) {
-    from += this.length
-  }
-  var ret = new Yallist()
-  if (to < from || to < 0) {
-    return ret
-  }
-  if (from < 0) {
-    from = 0
-  }
-  if (to > this.length) {
-    to = this.length
-  }
-  for (var i = this.length, walker = this.tail; walker !== null && i > to; i--) {
-    walker = walker.prev
-  }
-  for (; walker !== null && i > from; i--, walker = walker.prev) {
-    ret.push(walker.value)
-  }
-  return ret
-}
-
-Yallist.prototype.splice = function (start, deleteCount /*, ...nodes */) {
-  if (start > this.length) {
-    start = this.length - 1
-  }
-  if (start < 0) {
-    start = this.length + start;
-  }
-
-  for (var i = 0, walker = this.head; walker !== null && i < start; i++) {
-    walker = walker.next
-  }
-
-  var ret = []
-  for (var i = 0; walker && i < deleteCount; i++) {
-    ret.push(walker.value)
-    walker = this.removeNode(walker)
-  }
-  if (walker === null) {
-    walker = this.tail
-  }
-
-  if (walker !== this.head && walker !== this.tail) {
-    walker = walker.prev
-  }
-
-  for (var i = 2; i < arguments.length; i++) {
-    walker = insert(this, walker, arguments[i])
-  }
-  return ret;
-}
-
-Yallist.prototype.reverse = function () {
-  var head = this.head
-  var tail = this.tail
-  for (var walker = head; walker !== null; walker = walker.prev) {
-    var p = walker.prev
-    walker.prev = walker.next
-    walker.next = p
-  }
-  this.head = tail
-  this.tail = head
-  return this
-}
-
-function insert (self, node, value) {
-  var inserted = node === self.head ?
-    new Node(value, null, node, self) :
-    new Node(value, node, node.next, self)
-
-  if (inserted.next === null) {
-    self.tail = inserted
-  }
-  if (inserted.prev === null) {
-    self.head = inserted
-  }
-
-  self.length++
-
-  return inserted
-}
-
-function push (self, item) {
-  self.tail = new Node(item, self.tail, null, self)
-  if (!self.head) {
-    self.head = self.tail
-  }
-  self.length++
-}
-
-function unshift (self, item) {
-  self.head = new Node(item, null, self.head, self)
-  if (!self.tail) {
-    self.tail = self.head
-  }
-  self.length++
-}
-
-function Node (value, prev, next, list) {
-  if (!(this instanceof Node)) {
-    return new Node(value, prev, next, list)
-  }
-
-  this.list = list
-  this.value = value
-
-  if (prev) {
-    prev.next = this
-    this.prev = prev
-  } else {
-    this.prev = null
-  }
-
-  if (next) {
-    next.prev = this
-    this.next = next
-  } else {
-    this.next = null
-  }
-}
-
-try {
-  // add if support for Symbol.iterator is present
-  __nccwpck_require__(9146)(Yallist)
-} catch (er) {}
-
-
-/***/ }),
-
-/***/ 5576:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const figgyPudding = __nccwpck_require__(3571)
-const index = __nccwpck_require__(595)
-const memo = __nccwpck_require__(5575)
-const write = __nccwpck_require__(3729)
-const to = __nccwpck_require__(3758).to
-
-const PutOpts = figgyPudding({
-  algorithms: {
-    default: ['sha512']
-  },
-  integrity: {},
-  memoize: {},
-  metadata: {},
-  pickAlgorithm: {},
-  size: {},
-  tmpPrefix: {},
-  single: {},
-  sep: {},
-  error: {},
-  strict: {}
-})
-
-module.exports = putData
-function putData (cache, key, data, opts) {
-  opts = PutOpts(opts)
-  return write(cache, data, opts).then(res => {
-    return index.insert(
-      cache, key, res.integrity, opts.concat({ size: res.size })
-    ).then(entry => {
-      if (opts.memoize) {
-        memo.put(cache, entry, data, opts)
-      }
-      return res.integrity
-    })
-  })
-}
-
-module.exports.stream = putStream
-function putStream (cache, key, opts) {
-  opts = PutOpts(opts)
-  let integrity
-  let size
-  const contentStream = write.stream(
-    cache, opts
-  ).on('integrity', int => {
-    integrity = int
-  }).on('size', s => {
-    size = s
-  })
-  let memoData
-  let memoTotal = 0
-  const stream = to((chunk, enc, cb) => {
-    contentStream.write(chunk, enc, () => {
-      if (opts.memoize) {
-        if (!memoData) { memoData = [] }
-        memoData.push(chunk)
-        memoTotal += chunk.length
-      }
-      cb()
-    })
-  }, cb => {
-    contentStream.end(() => {
-      index.insert(cache, key, integrity, opts.concat({ size })).then(entry => {
-        if (opts.memoize) {
-          memo.put(cache, entry, Buffer.concat(memoData, memoTotal), opts)
-        }
-        stream.emit('integrity', integrity)
-        cb()
-      })
-    })
-  })
-  let erred = false
-  stream.once('error', err => {
-    if (erred) { return }
-    erred = true
-    contentStream.emit('error', err)
-  })
-  contentStream.once('error', err => {
-    if (erred) { return }
-    erred = true
-    stream.emit('error', err)
-  })
-  return stream
-}
-
-
-/***/ }),
-
-/***/ 4876:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-const BB = __nccwpck_require__(8710)
-
-const index = __nccwpck_require__(595)
-const memo = __nccwpck_require__(5575)
-const path = __nccwpck_require__(5622)
-const rimraf = BB.promisify(__nccwpck_require__(9219))
-const rmContent = __nccwpck_require__(1343)
-
-module.exports = entry
-module.exports.entry = entry
-function entry (cache, key) {
-  memo.clearMemoized()
-  return index.delete(cache, key)
-}
-
-module.exports.content = content
-function content (cache, integrity) {
-  memo.clearMemoized()
-  return rmContent(cache, integrity)
-}
-
-module.exports.all = all
-function all (cache) {
-  memo.clearMemoized()
-  return rimraf(path.join(cache, '*(content-*|index-*)'))
-}
-
-
-/***/ }),
-
-/***/ 9869:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-
-module.exports = __nccwpck_require__(584)
-
-
-/***/ }),
-
-/***/ 9051:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
-
-"use strict";
-
-const fs = __nccwpck_require__(5747)
-const path = __nccwpck_require__(5622)
-
-/* istanbul ignore next */
-const LCHOWN = fs.lchown ? 'lchown' : 'chown'
-/* istanbul ignore next */
-const LCHOWNSYNC = fs.lchownSync ? 'lchownSync' : 'chownSync'
-
-/* istanbul ignore next */
-const needEISDIRHandled = fs.lchown &&
-  !process.version.match(/v1[1-9]+\./) &&
-  !process.version.match(/v10\.[6-9]/)
-
-const lchownSync = (path, uid, gid) => {
-  try {
-    return fs[LCHOWNSYNC](path, uid, gid)
-  } catch (er) {
-    if (er.code !== 'ENOENT')
-      throw er
-  }
-}
-
-/* istanbul ignore next */
-const chownSync = (path, uid, gid) => {
-  try {
-    return fs.chownSync(path, uid, gid)
-  } catch (er) {
-    if (er.code !== 'ENOENT')
-      throw er
-  }
-}
-
-/* istanbul ignore next */
-const handleEISDIR =
-  needEISDIRHandled ? (path, uid, gid, cb) => er => {
-    // Node prior to v10 had a very questionable implementation of
-    // fs.lchown, which would always try to call fs.open on a directory
-    // Fall back to fs.chown in those cases.
-    if (!er || er.code !== 'EISDIR')
-      cb(er)
-    else
-      fs.chown(path, uid, gid, cb)
-  }
-  : (_, __, ___, cb) => cb
-
-/* istanbul ignore next */
-const handleEISDirSync =
-  needEISDIRHandled ? (path, uid, gid) => {
-    try {
-      return lchownSync(path, uid, gid)
-    } catch (er) {
-      if (er.code !== 'EISDIR')
-        throw er
-      chownSync(path, uid, gid)
-    }
-  }
-  : (path, uid, gid) => lchownSync(path, uid, gid)
-
-// fs.readdir could only accept an options object as of node v6
-const nodeVersion = process.version
-let readdir = (path, options, cb) => fs.readdir(path, options, cb)
-let readdirSync = (path, options) => fs.readdirSync(path, options)
-/* istanbul ignore next */
-if (/^v4\./.test(nodeVersion))
-  readdir = (path, options, cb) => fs.readdir(path, cb)
-
-const chown = (cpath, uid, gid, cb) => {
-  fs[LCHOWN](cpath, uid, gid, handleEISDIR(cpath, uid, gid, er => {
-    // Skip ENOENT error
-    cb(er && er.code !== 'ENOENT' ? er : null)
-  }))
-}
-
-const chownrKid = (p, child, uid, gid, cb) => {
-  if (typeof child === 'string')
-    return fs.lstat(path.resolve(p, child), (er, stats) => {
-      // Skip ENOENT error
-      if (er)
-        return cb(er.code !== 'ENOENT' ? er : null)
-      stats.name = child
-      chownrKid(p, stats, uid, gid, cb)
-    })
-
-  if (child.isDirectory()) {
-    chownr(path.resolve(p, child.name), uid, gid, er => {
-      if (er)
-        return cb(er)
-      const cpath = path.resolve(p, child.name)
-      chown(cpath, uid, gid, cb)
-    })
-  } else {
-    const cpath = path.resolve(p, child.name)
-    chown(cpath, uid, gid, cb)
-  }
-}
-
-
-const chownr = (p, uid, gid, cb) => {
-  readdir(p, { withFileTypes: true }, (er, children) => {
-    // any error other than ENOTDIR or ENOTSUP means it's not readable,
-    // or doesn't exist.  give up.
-    if (er) {
-      if (er.code === 'ENOENT')
-        return cb()
-      else if (er.code !== 'ENOTDIR' && er.code !== 'ENOTSUP')
-        return cb(er)
-    }
-    if (er || !children.length)
-      return chown(p, uid, gid, cb)
-
-    let len = children.length
-    let errState = null
-    const then = er => {
-      if (errState)
-        return
-      if (er)
-        return cb(errState = er)
-      if (-- len === 0)
-        return chown(p, uid, gid, cb)
-    }
-
-    children.forEach(child => chownrKid(p, child, uid, gid, then))
-  })
-}
-
-const chownrKidSync = (p, child, uid, gid) => {
-  if (typeof child === 'string') {
-    try {
-      const stats = fs.lstatSync(path.resolve(p, child))
-      stats.name = child
-      child = stats
-    } catch (er) {
-      if (er.code === 'ENOENT')
-        return
-      else
-        throw er
-    }
-  }
-
-  if (child.isDirectory())
-    chownrSync(path.resolve(p, child.name), uid, gid)
-
-  handleEISDirSync(path.resolve(p, child.name), uid, gid)
-}
-
-const chownrSync = (p, uid, gid) => {
-  let children
-  try {
-    children = readdirSync(p, { withFileTypes: true })
-  } catch (er) {
-    if (er.code === 'ENOENT')
-      return
-    else if (er.code === 'ENOTDIR' || er.code === 'ENOTSUP')
-      return handleEISDirSync(p, uid, gid)
-    else
-      throw er
-  }
-
-  if (children && children.length)
-    children.forEach(child => chownrKidSync(p, child, uid, gid))
-
-  return handleEISDirSync(p, uid, gid)
-}
-
-module.exports = chownr
-chownr.sync = chownrSync
-
-
-/***/ }),
-
 /***/ 5107:
 /***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
 
@@ -14995,7 +12225,2420 @@ RunQueue.prototype.add = function (prio, cmd, args) {
 
 /***/ }),
 
-/***/ 6726:
+/***/ 9732:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+var eos = __nccwpck_require__(1205)
+var shift = __nccwpck_require__(6121)
+
+module.exports = each
+
+function each (stream, fn, cb) {
+  var want = true
+  var error = null
+  var ended = false
+  var running = false
+  var calling = false
+
+  stream.on('readable', onreadable)
+  onreadable()
+
+  if (cb) eos(stream, {readable: true, writable: false}, done)
+  return stream
+
+  function done (err) {
+    if (!error) error = err
+    ended = true
+    if (!running) cb(error)
+  }
+
+  function onreadable () {
+    if (want) read()
+  }
+
+  function afterRead (err) {
+    running = false
+
+    if (err) {
+      error = err
+      if (ended) return cb(error)
+      stream.destroy(err)
+      return
+    }
+    if (ended) return cb(error)
+    if (!calling) read()
+  }
+
+  function read () {
+    while (!running && !ended) {
+      want = false
+
+      var data = shift(stream)
+      if (ended) return
+      if (data === null) {
+        want = true
+        return
+      }
+
+      running = true
+      calling = true
+      fn(data, afterRead)
+      calling = false
+    }
+  }
+}
+
+
+/***/ }),
+
+/***/ 6121:
+/***/ (function(module) {
+
+module.exports = shift
+
+function shift (stream) {
+  var rs = stream._readableState
+  if (!rs) return null
+  return (rs.objectMode || typeof stream._duplexState === 'number') ? stream.read() : stream.read(getStateLength(rs))
+}
+
+function getStateLength (state) {
+  if (state.buffer.length) {
+    // Since node 6.3.0 state.buffer is a BufferList not an array
+    if (state.buffer.head) {
+      return state.buffer.head.data.length
+    }
+
+    return state.buffer[0].length
+  }
+
+  return state.length
+}
+
+
+/***/ }),
+
+/***/ 6318:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const figgyPudding = __nccwpck_require__(3571)
+const fs = __nccwpck_require__(5747)
+const index = __nccwpck_require__(9668)
+const memo = __nccwpck_require__(5572)
+const pipe = __nccwpck_require__(3758).pipe
+const pipeline = __nccwpck_require__(3758).pipeline
+const read = __nccwpck_require__(3868)
+const through = __nccwpck_require__(3758).through
+
+const GetOpts = figgyPudding({
+  integrity: {},
+  memoize: {},
+  size: {}
+})
+
+module.exports = function get (cache, key, opts) {
+  return getData(false, cache, key, opts)
+}
+module.exports.byDigest = function getByDigest (cache, digest, opts) {
+  return getData(true, cache, digest, opts)
+}
+function getData (byDigest, cache, key, opts) {
+  opts = GetOpts(opts)
+  const memoized = (
+    byDigest
+      ? memo.get.byDigest(cache, key, opts)
+      : memo.get(cache, key, opts)
+  )
+  if (memoized && opts.memoize !== false) {
+    return BB.resolve(byDigest ? memoized : {
+      metadata: memoized.entry.metadata,
+      data: memoized.data,
+      integrity: memoized.entry.integrity,
+      size: memoized.entry.size
+    })
+  }
+  return (
+    byDigest ? BB.resolve(null) : index.find(cache, key, opts)
+  ).then(entry => {
+    if (!entry && !byDigest) {
+      throw new index.NotFoundError(cache, key)
+    }
+    return read(cache, byDigest ? key : entry.integrity, {
+      integrity: opts.integrity,
+      size: opts.size
+    }).then(data => byDigest ? data : {
+      metadata: entry.metadata,
+      data: data,
+      size: entry.size,
+      integrity: entry.integrity
+    }).then(res => {
+      if (opts.memoize && byDigest) {
+        memo.put.byDigest(cache, key, res, opts)
+      } else if (opts.memoize) {
+        memo.put(cache, entry, res.data, opts)
+      }
+      return res
+    })
+  })
+}
+
+module.exports.sync = function get (cache, key, opts) {
+  return getDataSync(false, cache, key, opts)
+}
+module.exports.sync.byDigest = function getByDigest (cache, digest, opts) {
+  return getDataSync(true, cache, digest, opts)
+}
+function getDataSync (byDigest, cache, key, opts) {
+  opts = GetOpts(opts)
+  const memoized = (
+    byDigest
+      ? memo.get.byDigest(cache, key, opts)
+      : memo.get(cache, key, opts)
+  )
+  if (memoized && opts.memoize !== false) {
+    return byDigest ? memoized : {
+      metadata: memoized.entry.metadata,
+      data: memoized.data,
+      integrity: memoized.entry.integrity,
+      size: memoized.entry.size
+    }
+  }
+  const entry = !byDigest && index.find.sync(cache, key, opts)
+  if (!entry && !byDigest) {
+    throw new index.NotFoundError(cache, key)
+  }
+  const data = read.sync(
+    cache,
+    byDigest ? key : entry.integrity,
+    {
+      integrity: opts.integrity,
+      size: opts.size
+    }
+  )
+  const res = byDigest
+    ? data
+    : {
+      metadata: entry.metadata,
+      data: data,
+      size: entry.size,
+      integrity: entry.integrity
+    }
+  if (opts.memoize && byDigest) {
+    memo.put.byDigest(cache, key, res, opts)
+  } else if (opts.memoize) {
+    memo.put(cache, entry, res.data, opts)
+  }
+  return res
+}
+
+module.exports.stream = getStream
+function getStream (cache, key, opts) {
+  opts = GetOpts(opts)
+  let stream = through()
+  const memoized = memo.get(cache, key, opts)
+  if (memoized && opts.memoize !== false) {
+    stream.on('newListener', function (ev, cb) {
+      ev === 'metadata' && cb(memoized.entry.metadata)
+      ev === 'integrity' && cb(memoized.entry.integrity)
+      ev === 'size' && cb(memoized.entry.size)
+    })
+    stream.write(memoized.data, () => stream.end())
+    return stream
+  }
+  index.find(cache, key).then(entry => {
+    if (!entry) {
+      return stream.emit(
+        'error', new index.NotFoundError(cache, key)
+      )
+    }
+    let memoStream
+    if (opts.memoize) {
+      let memoData = []
+      let memoLength = 0
+      memoStream = through((c, en, cb) => {
+        memoData && memoData.push(c)
+        memoLength += c.length
+        cb(null, c, en)
+      }, cb => {
+        memoData && memo.put(cache, entry, Buffer.concat(memoData, memoLength), opts)
+        cb()
+      })
+    } else {
+      memoStream = through()
+    }
+    stream.emit('metadata', entry.metadata)
+    stream.emit('integrity', entry.integrity)
+    stream.emit('size', entry.size)
+    stream.on('newListener', function (ev, cb) {
+      ev === 'metadata' && cb(entry.metadata)
+      ev === 'integrity' && cb(entry.integrity)
+      ev === 'size' && cb(entry.size)
+    })
+    pipe(
+      read.readStream(cache, entry.integrity, opts.concat({
+        size: opts.size == null ? entry.size : opts.size
+      })),
+      memoStream,
+      stream
+    )
+  }).catch(err => stream.emit('error', err))
+  return stream
+}
+
+module.exports.stream.byDigest = getStreamDigest
+function getStreamDigest (cache, integrity, opts) {
+  opts = GetOpts(opts)
+  const memoized = memo.get.byDigest(cache, integrity, opts)
+  if (memoized && opts.memoize !== false) {
+    const stream = through()
+    stream.write(memoized, () => stream.end())
+    return stream
+  } else {
+    let stream = read.readStream(cache, integrity, opts)
+    if (opts.memoize) {
+      let memoData = []
+      let memoLength = 0
+      const memoStream = through((c, en, cb) => {
+        memoData && memoData.push(c)
+        memoLength += c.length
+        cb(null, c, en)
+      }, cb => {
+        memoData && memo.put.byDigest(
+          cache,
+          integrity,
+          Buffer.concat(memoData, memoLength),
+          opts
+        )
+        cb()
+      })
+      stream = pipeline(stream, memoStream)
+    }
+    return stream
+  }
+}
+
+module.exports.info = info
+function info (cache, key, opts) {
+  opts = GetOpts(opts)
+  const memoized = memo.get(cache, key, opts)
+  if (memoized && opts.memoize !== false) {
+    return BB.resolve(memoized.entry)
+  } else {
+    return index.find(cache, key)
+  }
+}
+
+module.exports.hasContent = read.hasContent
+
+module.exports.copy = function cp (cache, key, dest, opts) {
+  return copy(false, cache, key, dest, opts)
+}
+module.exports.copy.byDigest = function cpDigest (cache, digest, dest, opts) {
+  return copy(true, cache, digest, dest, opts)
+}
+function copy (byDigest, cache, key, dest, opts) {
+  opts = GetOpts(opts)
+  if (read.copy) {
+    return (
+      byDigest ? BB.resolve(null) : index.find(cache, key, opts)
+    ).then(entry => {
+      if (!entry && !byDigest) {
+        throw new index.NotFoundError(cache, key)
+      }
+      return read.copy(
+        cache, byDigest ? key : entry.integrity, dest, opts
+      ).then(() => byDigest ? key : {
+        metadata: entry.metadata,
+        size: entry.size,
+        integrity: entry.integrity
+      })
+    })
+  } else {
+    return getData(byDigest, cache, key, opts).then(res => {
+      return fs.writeFileAsync(dest, byDigest ? res : res.data)
+        .then(() => byDigest ? key : {
+          metadata: res.metadata,
+          size: res.size,
+          integrity: res.integrity
+        })
+    })
+  }
+}
+
+
+/***/ }),
+
+/***/ 714:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const contentVer = __nccwpck_require__(6705)/* ["cache-version"].content */ .Jw.k
+const hashToSegments = __nccwpck_require__(4321)
+const path = __nccwpck_require__(5622)
+const ssri = __nccwpck_require__(3143)
+
+// Current format of content file path:
+//
+// sha512-BaSE64Hex= ->
+// ~/.my-cache/content-v2/sha512/ba/da/55deadbeefc0ffee
+//
+module.exports = contentPath
+function contentPath (cache, integrity) {
+  const sri = ssri.parse(integrity, { single: true })
+  // contentPath is the *strongest* algo given
+  return path.join.apply(path, [
+    contentDir(cache),
+    sri.algorithm
+  ].concat(hashToSegments(sri.hexDigest())))
+}
+
+module.exports._contentDir = contentDir
+function contentDir (cache) {
+  return path.join(cache, `content-v${contentVer}`)
+}
+
+
+/***/ }),
+
+/***/ 3868:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const contentPath = __nccwpck_require__(714)
+const figgyPudding = __nccwpck_require__(3571)
+const fs = __nccwpck_require__(7758)
+const PassThrough = __nccwpck_require__(2413).PassThrough
+const pipe = BB.promisify(__nccwpck_require__(3758).pipe)
+const ssri = __nccwpck_require__(3143)
+const Y = __nccwpck_require__(2632)
+
+const lstatAsync = BB.promisify(fs.lstat)
+const readFileAsync = BB.promisify(fs.readFile)
+
+const ReadOpts = figgyPudding({
+  size: {}
+})
+
+module.exports = read
+function read (cache, integrity, opts) {
+  opts = ReadOpts(opts)
+  return withContentSri(cache, integrity, (cpath, sri) => {
+    return readFileAsync(cpath, null).then(data => {
+      if (typeof opts.size === 'number' && opts.size !== data.length) {
+        throw sizeError(opts.size, data.length)
+      } else if (ssri.checkData(data, sri)) {
+        return data
+      } else {
+        throw integrityError(sri, cpath)
+      }
+    })
+  })
+}
+
+module.exports.sync = readSync
+function readSync (cache, integrity, opts) {
+  opts = ReadOpts(opts)
+  return withContentSriSync(cache, integrity, (cpath, sri) => {
+    const data = fs.readFileSync(cpath)
+    if (typeof opts.size === 'number' && opts.size !== data.length) {
+      throw sizeError(opts.size, data.length)
+    } else if (ssri.checkData(data, sri)) {
+      return data
+    } else {
+      throw integrityError(sri, cpath)
+    }
+  })
+}
+
+module.exports.stream = readStream
+module.exports.readStream = readStream
+function readStream (cache, integrity, opts) {
+  opts = ReadOpts(opts)
+  const stream = new PassThrough()
+  withContentSri(cache, integrity, (cpath, sri) => {
+    return lstatAsync(cpath).then(stat => ({ cpath, sri, stat }))
+  }).then(({ cpath, sri, stat }) => {
+    return pipe(
+      fs.createReadStream(cpath),
+      ssri.integrityStream({
+        integrity: sri,
+        size: opts.size
+      }),
+      stream
+    )
+  }).catch(err => {
+    stream.emit('error', err)
+  })
+  return stream
+}
+
+let copyFileAsync
+if (fs.copyFile) {
+  module.exports.copy = copy
+  module.exports.copy.sync = copySync
+  copyFileAsync = BB.promisify(fs.copyFile)
+}
+
+function copy (cache, integrity, dest, opts) {
+  opts = ReadOpts(opts)
+  return withContentSri(cache, integrity, (cpath, sri) => {
+    return copyFileAsync(cpath, dest)
+  })
+}
+
+function copySync (cache, integrity, dest, opts) {
+  opts = ReadOpts(opts)
+  return withContentSriSync(cache, integrity, (cpath, sri) => {
+    return fs.copyFileSync(cpath, dest)
+  })
+}
+
+module.exports.hasContent = hasContent
+function hasContent (cache, integrity) {
+  if (!integrity) { return BB.resolve(false) }
+  return withContentSri(cache, integrity, (cpath, sri) => {
+    return lstatAsync(cpath).then(stat => ({ size: stat.size, sri, stat }))
+  }).catch(err => {
+    if (err.code === 'ENOENT') { return false }
+    if (err.code === 'EPERM') {
+      if (process.platform !== 'win32') {
+        throw err
+      } else {
+        return false
+      }
+    }
+  })
+}
+
+module.exports.hasContent.sync = hasContentSync
+function hasContentSync (cache, integrity) {
+  if (!integrity) { return false }
+  return withContentSriSync(cache, integrity, (cpath, sri) => {
+    try {
+      const stat = fs.lstatSync(cpath)
+      return { size: stat.size, sri, stat }
+    } catch (err) {
+      if (err.code === 'ENOENT') { return false }
+      if (err.code === 'EPERM') {
+        if (process.platform !== 'win32') {
+          throw err
+        } else {
+          return false
+        }
+      }
+    }
+  })
+}
+
+function withContentSri (cache, integrity, fn) {
+  return BB.try(() => {
+    const sri = ssri.parse(integrity)
+    // If `integrity` has multiple entries, pick the first digest
+    // with available local data.
+    const algo = sri.pickAlgorithm()
+    const digests = sri[algo]
+    if (digests.length <= 1) {
+      const cpath = contentPath(cache, digests[0])
+      return fn(cpath, digests[0])
+    } else {
+      return BB.any(sri[sri.pickAlgorithm()].map(meta => {
+        return withContentSri(cache, meta, fn)
+      }, { concurrency: 1 }))
+        .catch(err => {
+          if ([].some.call(err, e => e.code === 'ENOENT')) {
+            throw Object.assign(
+              new Error('No matching content found for ' + sri.toString()),
+              { code: 'ENOENT' }
+            )
+          } else {
+            throw err[0]
+          }
+        })
+    }
+  })
+}
+
+function withContentSriSync (cache, integrity, fn) {
+  const sri = ssri.parse(integrity)
+  // If `integrity` has multiple entries, pick the first digest
+  // with available local data.
+  const algo = sri.pickAlgorithm()
+  const digests = sri[algo]
+  if (digests.length <= 1) {
+    const cpath = contentPath(cache, digests[0])
+    return fn(cpath, digests[0])
+  } else {
+    let lastErr = null
+    for (const meta of sri[sri.pickAlgorithm()]) {
+      try {
+        return withContentSriSync(cache, meta, fn)
+      } catch (err) {
+        lastErr = err
+      }
+    }
+    if (lastErr) { throw lastErr }
+  }
+}
+
+function sizeError (expected, found) {
+  var err = new Error(Y`Bad data size: expected inserted data to be ${expected} bytes, but got ${found} instead`)
+  err.expected = expected
+  err.found = found
+  err.code = 'EBADSIZE'
+  return err
+}
+
+function integrityError (sri, path) {
+  var err = new Error(Y`Integrity verification failed for ${sri} (${path})`)
+  err.code = 'EINTEGRITY'
+  err.sri = sri
+  err.path = path
+  return err
+}
+
+
+/***/ }),
+
+/***/ 2596:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const contentPath = __nccwpck_require__(714)
+const hasContent = __nccwpck_require__(3868).hasContent
+const rimraf = BB.promisify(__nccwpck_require__(9219))
+
+module.exports = rm
+function rm (cache, integrity) {
+  return hasContent(cache, integrity).then(content => {
+    if (content) {
+      const sri = content.sri
+      if (sri) {
+        return rimraf(contentPath(cache, sri)).then(() => true)
+      }
+    } else {
+      return false
+    }
+  })
+}
+
+
+/***/ }),
+
+/***/ 7106:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const contentPath = __nccwpck_require__(714)
+const fixOwner = __nccwpck_require__(5560)
+const fs = __nccwpck_require__(7758)
+const moveFile = __nccwpck_require__(3869)
+const PassThrough = __nccwpck_require__(2413).PassThrough
+const path = __nccwpck_require__(5622)
+const pipe = BB.promisify(__nccwpck_require__(3758).pipe)
+const rimraf = BB.promisify(__nccwpck_require__(9219))
+const ssri = __nccwpck_require__(3143)
+const to = __nccwpck_require__(3758).to
+const uniqueFilename = __nccwpck_require__(217)
+const Y = __nccwpck_require__(2632)
+
+const writeFileAsync = BB.promisify(fs.writeFile)
+
+module.exports = write
+function write (cache, data, opts) {
+  opts = opts || {}
+  if (opts.algorithms && opts.algorithms.length > 1) {
+    throw new Error(
+      Y`opts.algorithms only supports a single algorithm for now`
+    )
+  }
+  if (typeof opts.size === 'number' && data.length !== opts.size) {
+    return BB.reject(sizeError(opts.size, data.length))
+  }
+  const sri = ssri.fromData(data, {
+    algorithms: opts.algorithms
+  })
+  if (opts.integrity && !ssri.checkData(data, opts.integrity, opts)) {
+    return BB.reject(checksumError(opts.integrity, sri))
+  }
+  return BB.using(makeTmp(cache, opts), tmp => (
+    writeFileAsync(
+      tmp.target, data, { flag: 'wx' }
+    ).then(() => (
+      moveToDestination(tmp, cache, sri, opts)
+    ))
+  )).then(() => ({ integrity: sri, size: data.length }))
+}
+
+module.exports.stream = writeStream
+function writeStream (cache, opts) {
+  opts = opts || {}
+  const inputStream = new PassThrough()
+  let inputErr = false
+  function errCheck () {
+    if (inputErr) { throw inputErr }
+  }
+
+  let allDone
+  const ret = to((c, n, cb) => {
+    if (!allDone) {
+      allDone = handleContent(inputStream, cache, opts, errCheck)
+    }
+    inputStream.write(c, n, cb)
+  }, cb => {
+    inputStream.end(() => {
+      if (!allDone) {
+        const e = new Error(Y`Cache input stream was empty`)
+        e.code = 'ENODATA'
+        return ret.emit('error', e)
+      }
+      allDone.then(res => {
+        res.integrity && ret.emit('integrity', res.integrity)
+        res.size !== null && ret.emit('size', res.size)
+        cb()
+      }, e => {
+        ret.emit('error', e)
+      })
+    })
+  })
+  ret.once('error', e => {
+    inputErr = e
+  })
+  return ret
+}
+
+function handleContent (inputStream, cache, opts, errCheck) {
+  return BB.using(makeTmp(cache, opts), tmp => {
+    errCheck()
+    return pipeToTmp(
+      inputStream, cache, tmp.target, opts, errCheck
+    ).then(res => {
+      return moveToDestination(
+        tmp, cache, res.integrity, opts, errCheck
+      ).then(() => res)
+    })
+  })
+}
+
+function pipeToTmp (inputStream, cache, tmpTarget, opts, errCheck) {
+  return BB.resolve().then(() => {
+    let integrity
+    let size
+    const hashStream = ssri.integrityStream({
+      integrity: opts.integrity,
+      algorithms: opts.algorithms,
+      size: opts.size
+    }).on('integrity', s => {
+      integrity = s
+    }).on('size', s => {
+      size = s
+    })
+    const outStream = fs.createWriteStream(tmpTarget, {
+      flags: 'wx'
+    })
+    errCheck()
+    return pipe(inputStream, hashStream, outStream).then(() => {
+      return { integrity, size }
+    }).catch(err => {
+      return rimraf(tmpTarget).then(() => { throw err })
+    })
+  })
+}
+
+function makeTmp (cache, opts) {
+  const tmpTarget = uniqueFilename(path.join(cache, 'tmp'), opts.tmpPrefix)
+  return fixOwner.mkdirfix(
+    cache, path.dirname(tmpTarget)
+  ).then(() => ({
+    target: tmpTarget,
+    moved: false
+  })).disposer(tmp => (!tmp.moved && rimraf(tmp.target)))
+}
+
+function moveToDestination (tmp, cache, sri, opts, errCheck) {
+  errCheck && errCheck()
+  const destination = contentPath(cache, sri)
+  const destDir = path.dirname(destination)
+
+  return fixOwner.mkdirfix(
+    cache, destDir
+  ).then(() => {
+    errCheck && errCheck()
+    return moveFile(tmp.target, destination)
+  }).then(() => {
+    errCheck && errCheck()
+    tmp.moved = true
+    return fixOwner.chownr(cache, destination)
+  })
+}
+
+function sizeError (expected, found) {
+  var err = new Error(Y`Bad data size: expected inserted data to be ${expected} bytes, but got ${found} instead`)
+  err.expected = expected
+  err.found = found
+  err.code = 'EBADSIZE'
+  return err
+}
+
+function checksumError (expected, found) {
+  var err = new Error(Y`Integrity check failed:
+  Wanted: ${expected}
+   Found: ${found}`)
+  err.code = 'EINTEGRITY'
+  err.expected = expected
+  err.found = found
+  return err
+}
+
+
+/***/ }),
+
+/***/ 9668:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const contentPath = __nccwpck_require__(714)
+const crypto = __nccwpck_require__(6417)
+const figgyPudding = __nccwpck_require__(3571)
+const fixOwner = __nccwpck_require__(5560)
+const fs = __nccwpck_require__(7758)
+const hashToSegments = __nccwpck_require__(4321)
+const ms = __nccwpck_require__(3758)
+const path = __nccwpck_require__(5622)
+const ssri = __nccwpck_require__(3143)
+const Y = __nccwpck_require__(2632)
+
+const indexV = __nccwpck_require__(6705)/* ["cache-version"].index */ .Jw.K
+
+const appendFileAsync = BB.promisify(fs.appendFile)
+const readFileAsync = BB.promisify(fs.readFile)
+const readdirAsync = BB.promisify(fs.readdir)
+const concat = ms.concat
+const from = ms.from
+
+module.exports.NotFoundError = class NotFoundError extends Error {
+  constructor (cache, key) {
+    super(Y`No cache entry for \`${key}\` found in \`${cache}\``)
+    this.code = 'ENOENT'
+    this.cache = cache
+    this.key = key
+  }
+}
+
+const IndexOpts = figgyPudding({
+  metadata: {},
+  size: {}
+})
+
+module.exports.insert = insert
+function insert (cache, key, integrity, opts) {
+  opts = IndexOpts(opts)
+  const bucket = bucketPath(cache, key)
+  const entry = {
+    key,
+    integrity: integrity && ssri.stringify(integrity),
+    time: Date.now(),
+    size: opts.size,
+    metadata: opts.metadata
+  }
+  return fixOwner.mkdirfix(
+    cache, path.dirname(bucket)
+  ).then(() => {
+    const stringified = JSON.stringify(entry)
+    // NOTE - Cleverness ahoy!
+    //
+    // This works because it's tremendously unlikely for an entry to corrupt
+    // another while still preserving the string length of the JSON in
+    // question. So, we just slap the length in there and verify it on read.
+    //
+    // Thanks to @isaacs for the whiteboarding session that ended up with this.
+    return appendFileAsync(
+      bucket, `\n${hashEntry(stringified)}\t${stringified}`
+    )
+  }).then(
+    () => fixOwner.chownr(cache, bucket)
+  ).catch({ code: 'ENOENT' }, () => {
+    // There's a class of race conditions that happen when things get deleted
+    // during fixOwner, or between the two mkdirfix/chownr calls.
+    //
+    // It's perfectly fine to just not bother in those cases and lie
+    // that the index entry was written. Because it's a cache.
+  }).then(() => {
+    return formatEntry(cache, entry)
+  })
+}
+
+module.exports.insert.sync = insertSync
+function insertSync (cache, key, integrity, opts) {
+  opts = IndexOpts(opts)
+  const bucket = bucketPath(cache, key)
+  const entry = {
+    key,
+    integrity: integrity && ssri.stringify(integrity),
+    time: Date.now(),
+    size: opts.size,
+    metadata: opts.metadata
+  }
+  fixOwner.mkdirfix.sync(cache, path.dirname(bucket))
+  const stringified = JSON.stringify(entry)
+  fs.appendFileSync(
+    bucket, `\n${hashEntry(stringified)}\t${stringified}`
+  )
+  try {
+    fixOwner.chownr.sync(cache, bucket)
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err
+    }
+  }
+  return formatEntry(cache, entry)
+}
+
+module.exports.find = find
+function find (cache, key) {
+  const bucket = bucketPath(cache, key)
+  return bucketEntries(bucket).then(entries => {
+    return entries.reduce((latest, next) => {
+      if (next && next.key === key) {
+        return formatEntry(cache, next)
+      } else {
+        return latest
+      }
+    }, null)
+  }).catch(err => {
+    if (err.code === 'ENOENT') {
+      return null
+    } else {
+      throw err
+    }
+  })
+}
+
+module.exports.find.sync = findSync
+function findSync (cache, key) {
+  const bucket = bucketPath(cache, key)
+  try {
+    return bucketEntriesSync(bucket).reduce((latest, next) => {
+      if (next && next.key === key) {
+        return formatEntry(cache, next)
+      } else {
+        return latest
+      }
+    }, null)
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return null
+    } else {
+      throw err
+    }
+  }
+}
+
+module.exports.delete = del
+function del (cache, key, opts) {
+  return insert(cache, key, null, opts)
+}
+
+module.exports.delete.sync = delSync
+function delSync (cache, key, opts) {
+  return insertSync(cache, key, null, opts)
+}
+
+module.exports.lsStream = lsStream
+function lsStream (cache) {
+  const indexDir = bucketDir(cache)
+  const stream = from.obj()
+
+  // "/cachename/*"
+  readdirOrEmpty(indexDir).map(bucket => {
+    const bucketPath = path.join(indexDir, bucket)
+
+    // "/cachename/<bucket 0xFF>/*"
+    return readdirOrEmpty(bucketPath).map(subbucket => {
+      const subbucketPath = path.join(bucketPath, subbucket)
+
+      // "/cachename/<bucket 0xFF>/<bucket 0xFF>/*"
+      return readdirOrEmpty(subbucketPath).map(entry => {
+        const getKeyToEntry = bucketEntries(
+          path.join(subbucketPath, entry)
+        ).reduce((acc, entry) => {
+          acc.set(entry.key, entry)
+          return acc
+        }, new Map())
+
+        return getKeyToEntry.then(reduced => {
+          for (let entry of reduced.values()) {
+            const formatted = formatEntry(cache, entry)
+            formatted && stream.push(formatted)
+          }
+        }).catch({ code: 'ENOENT' }, nop)
+      })
+    })
+  }).then(() => {
+    stream.push(null)
+  }, err => {
+    stream.emit('error', err)
+  })
+
+  return stream
+}
+
+module.exports.ls = ls
+function ls (cache) {
+  return BB.fromNode(cb => {
+    lsStream(cache).on('error', cb).pipe(concat(entries => {
+      cb(null, entries.reduce((acc, xs) => {
+        acc[xs.key] = xs
+        return acc
+      }, {}))
+    }))
+  })
+}
+
+function bucketEntries (bucket, filter) {
+  return readFileAsync(
+    bucket, 'utf8'
+  ).then(data => _bucketEntries(data, filter))
+}
+
+function bucketEntriesSync (bucket, filter) {
+  const data = fs.readFileSync(bucket, 'utf8')
+  return _bucketEntries(data, filter)
+}
+
+function _bucketEntries (data, filter) {
+  let entries = []
+  data.split('\n').forEach(entry => {
+    if (!entry) { return }
+    const pieces = entry.split('\t')
+    if (!pieces[1] || hashEntry(pieces[1]) !== pieces[0]) {
+      // Hash is no good! Corruption or malice? Doesn't matter!
+      // EJECT EJECT
+      return
+    }
+    let obj
+    try {
+      obj = JSON.parse(pieces[1])
+    } catch (e) {
+      // Entry is corrupted!
+      return
+    }
+    if (obj) {
+      entries.push(obj)
+    }
+  })
+  return entries
+}
+
+module.exports._bucketDir = bucketDir
+function bucketDir (cache) {
+  return path.join(cache, `index-v${indexV}`)
+}
+
+module.exports._bucketPath = bucketPath
+function bucketPath (cache, key) {
+  const hashed = hashKey(key)
+  return path.join.apply(path, [bucketDir(cache)].concat(
+    hashToSegments(hashed)
+  ))
+}
+
+module.exports._hashKey = hashKey
+function hashKey (key) {
+  return hash(key, 'sha256')
+}
+
+module.exports._hashEntry = hashEntry
+function hashEntry (str) {
+  return hash(str, 'sha1')
+}
+
+function hash (str, digest) {
+  return crypto
+    .createHash(digest)
+    .update(str)
+    .digest('hex')
+}
+
+function formatEntry (cache, entry) {
+  // Treat null digests as deletions. They'll shadow any previous entries.
+  if (!entry.integrity) { return null }
+  return {
+    key: entry.key,
+    integrity: entry.integrity,
+    path: contentPath(cache, entry.integrity),
+    size: entry.size,
+    time: entry.time,
+    metadata: entry.metadata
+  }
+}
+
+function readdirOrEmpty (dir) {
+  return readdirAsync(dir)
+    .catch({ code: 'ENOENT' }, () => [])
+    .catch({ code: 'ENOTDIR' }, () => [])
+}
+
+function nop () {
+}
+
+
+/***/ }),
+
+/***/ 5572:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const LRU = __nccwpck_require__(7643)
+
+const MAX_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_AGE = 3 * 60 * 1000
+
+let MEMOIZED = new LRU({
+  max: MAX_SIZE,
+  maxAge: MAX_AGE,
+  length: (entry, key) => {
+    if (key.startsWith('key:')) {
+      return entry.data.length
+    } else if (key.startsWith('digest:')) {
+      return entry.length
+    }
+  }
+})
+
+module.exports.clearMemoized = clearMemoized
+function clearMemoized () {
+  const old = {}
+  MEMOIZED.forEach((v, k) => {
+    old[k] = v
+  })
+  MEMOIZED.reset()
+  return old
+}
+
+module.exports.put = put
+function put (cache, entry, data, opts) {
+  pickMem(opts).set(`key:${cache}:${entry.key}`, { entry, data })
+  putDigest(cache, entry.integrity, data, opts)
+}
+
+module.exports.put.byDigest = putDigest
+function putDigest (cache, integrity, data, opts) {
+  pickMem(opts).set(`digest:${cache}:${integrity}`, data)
+}
+
+module.exports.get = get
+function get (cache, key, opts) {
+  return pickMem(opts).get(`key:${cache}:${key}`)
+}
+
+module.exports.get.byDigest = getDigest
+function getDigest (cache, integrity, opts) {
+  return pickMem(opts).get(`digest:${cache}:${integrity}`)
+}
+
+class ObjProxy {
+  constructor (obj) {
+    this.obj = obj
+  }
+  get (key) { return this.obj[key] }
+  set (key, val) { this.obj[key] = val }
+}
+
+function pickMem (opts) {
+  if (!opts || !opts.memoize) {
+    return MEMOIZED
+  } else if (opts.memoize.get && opts.memoize.set) {
+    return opts.memoize
+  } else if (typeof opts.memoize === 'object') {
+    return new ObjProxy(opts.memoize)
+  } else {
+    return MEMOIZED
+  }
+}
+
+
+/***/ }),
+
+/***/ 5560:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const chownr = BB.promisify(__nccwpck_require__(4357))
+const mkdirp = BB.promisify(__nccwpck_require__(1644))
+const inflight = __nccwpck_require__(439)
+const inferOwner = __nccwpck_require__(5476)
+
+// Memoize getuid()/getgid() calls.
+// patch process.setuid/setgid to invalidate cached value on change
+const self = { uid: null, gid: null }
+const getSelf = () => {
+  if (typeof self.uid !== 'number') {
+    self.uid = process.getuid()
+    const setuid = process.setuid
+    process.setuid = (uid) => {
+      self.uid = null
+      process.setuid = setuid
+      return process.setuid(uid)
+    }
+  }
+  if (typeof self.gid !== 'number') {
+    self.gid = process.getgid()
+    const setgid = process.setgid
+    process.setgid = (gid) => {
+      self.gid = null
+      process.setgid = setgid
+      return process.setgid(gid)
+    }
+  }
+}
+
+module.exports.chownr = fixOwner
+function fixOwner (cache, filepath) {
+  if (!process.getuid) {
+    // This platform doesn't need ownership fixing
+    return BB.resolve()
+  }
+
+  getSelf()
+  if (self.uid !== 0) {
+    // almost certainly can't chown anyway
+    return BB.resolve()
+  }
+
+  return BB.resolve(inferOwner(cache)).then(owner => {
+    const { uid, gid } = owner
+
+    // No need to override if it's already what we used.
+    if (self.uid === uid && self.gid === gid) {
+      return
+    }
+
+    return inflight(
+      'fixOwner: fixing ownership on ' + filepath,
+      () => chownr(
+        filepath,
+        typeof uid === 'number' ? uid : self.uid,
+        typeof gid === 'number' ? gid : self.gid
+      ).catch({ code: 'ENOENT' }, () => null)
+    )
+  })
+}
+
+module.exports.chownr.sync = fixOwnerSync
+function fixOwnerSync (cache, filepath) {
+  if (!process.getuid) {
+    // This platform doesn't need ownership fixing
+    return
+  }
+  const { uid, gid } = inferOwner.sync(cache)
+  getSelf()
+  if (self.uid === uid && self.gid === gid) {
+    // No need to override if it's already what we used.
+    return
+  }
+  try {
+    chownr.sync(
+      filepath,
+      typeof uid === 'number' ? uid : self.uid,
+      typeof gid === 'number' ? gid : self.gid
+    )
+  } catch (err) {
+    // only catch ENOENT, any other error is a problem.
+    if (err.code === 'ENOENT') {
+      return null
+    }
+    throw err
+  }
+}
+
+module.exports.mkdirfix = mkdirfix
+function mkdirfix (cache, p, cb) {
+  // we have to infer the owner _before_ making the directory, even though
+  // we aren't going to use the results, since the cache itself might not
+  // exist yet.  If we mkdirp it, then our current uid/gid will be assumed
+  // to be correct if it creates the cache folder in the process.
+  return BB.resolve(inferOwner(cache)).then(() => {
+    return mkdirp(p).then(made => {
+      if (made) {
+        return fixOwner(cache, made).then(() => made)
+      }
+    }).catch({ code: 'EEXIST' }, () => {
+      // There's a race in mkdirp!
+      return fixOwner(cache, p).then(() => null)
+    })
+  })
+}
+
+module.exports.mkdirfix.sync = mkdirfixSync
+function mkdirfixSync (cache, p) {
+  try {
+    inferOwner.sync(cache)
+    const made = mkdirp.sync(p)
+    if (made) {
+      fixOwnerSync(cache, made)
+      return made
+    }
+  } catch (err) {
+    if (err.code === 'EEXIST') {
+      fixOwnerSync(cache, p)
+      return null
+    } else {
+      throw err
+    }
+  }
+}
+
+
+/***/ }),
+
+/***/ 4321:
+/***/ (function(module) {
+
+"use strict";
+
+
+module.exports = hashToSegments
+
+function hashToSegments (hash) {
+  return [
+    hash.slice(0, 2),
+    hash.slice(2, 4),
+    hash.slice(4)
+  ]
+}
+
+
+/***/ }),
+
+/***/ 3869:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const fs = __nccwpck_require__(7758)
+const BB = __nccwpck_require__(8710)
+const chmod = BB.promisify(fs.chmod)
+const unlink = BB.promisify(fs.unlink)
+let move
+let pinflight
+
+module.exports = moveFile
+function moveFile (src, dest) {
+  // This isn't quite an fs.rename -- the assumption is that
+  // if `dest` already exists, and we get certain errors while
+  // trying to move it, we should just not bother.
+  //
+  // In the case of cache corruption, users will receive an
+  // EINTEGRITY error elsewhere, and can remove the offending
+  // content their own way.
+  //
+  // Note that, as the name suggests, this strictly only supports file moves.
+  return BB.fromNode(cb => {
+    fs.link(src, dest, err => {
+      if (err) {
+        if (err.code === 'EEXIST' || err.code === 'EBUSY') {
+          // file already exists, so whatever
+        } else if (err.code === 'EPERM' && process.platform === 'win32') {
+          // file handle stayed open even past graceful-fs limits
+        } else {
+          return cb(err)
+        }
+      }
+      return cb()
+    })
+  }).then(() => {
+    // content should never change for any reason, so make it read-only
+    return BB.join(unlink(src), process.platform !== 'win32' && chmod(dest, '0444'))
+  }).catch(() => {
+    if (!pinflight) { pinflight = __nccwpck_require__(439) }
+    return pinflight('cacache-move-file:' + dest, () => {
+      return BB.promisify(fs.stat)(dest).catch(err => {
+        if (err.code !== 'ENOENT') {
+          // Something else is wrong here. Bail bail bail
+          throw err
+        }
+        // file doesn't already exist! let's try a rename -> copy fallback
+        if (!move) { move = __nccwpck_require__(9767) }
+        return move(src, dest, { BB, fs })
+      })
+    })
+  })
+}
+
+
+/***/ }),
+
+/***/ 2662:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const figgyPudding = __nccwpck_require__(3571)
+const fixOwner = __nccwpck_require__(5560)
+const path = __nccwpck_require__(5622)
+const rimraf = BB.promisify(__nccwpck_require__(9219))
+const uniqueFilename = __nccwpck_require__(217)
+
+const TmpOpts = figgyPudding({
+  tmpPrefix: {}
+})
+
+module.exports.mkdir = mktmpdir
+function mktmpdir (cache, opts) {
+  opts = TmpOpts(opts)
+  const tmpTarget = uniqueFilename(path.join(cache, 'tmp'), opts.tmpPrefix)
+  return fixOwner.mkdirfix(cache, tmpTarget).then(() => {
+    return tmpTarget
+  })
+}
+
+module.exports.withTmp = withTmp
+function withTmp (cache, opts, cb) {
+  if (!cb) {
+    cb = opts
+    opts = null
+  }
+  opts = TmpOpts(opts)
+  return BB.using(mktmpdir(cache, opts).disposer(rimraf), cb)
+}
+
+module.exports.fix = fixtmpdir
+function fixtmpdir (cache) {
+  return fixOwner(cache, path.join(cache, 'tmp'))
+}
+
+
+/***/ }),
+
+/***/ 2632:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const path = __nccwpck_require__(5622)
+const y18n = __nccwpck_require__(8138)({
+  directory: __nccwpck_require__.ab + "locales1",
+  locale: 'en',
+  updateFiles: process.env.CACACHE_UPDATE_LOCALE_FILES === 'true'
+})
+
+module.exports = yTag
+function yTag (parts) {
+  let str = ''
+  parts.forEach((part, i) => {
+    const arg = arguments[i + 1]
+    str += part
+    if (arg) {
+      str += '%s'
+    }
+  })
+  return y18n.__.apply(null, [str].concat([].slice.call(arguments, 1)))
+}
+
+module.exports.setLocale = locale => {
+  y18n.setLocale(locale)
+}
+
+
+/***/ }),
+
+/***/ 7:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const contentPath = __nccwpck_require__(714)
+const figgyPudding = __nccwpck_require__(3571)
+const finished = BB.promisify(__nccwpck_require__(3758).finished)
+const fixOwner = __nccwpck_require__(5560)
+const fs = __nccwpck_require__(7758)
+const glob = BB.promisify(__nccwpck_require__(5410))
+const index = __nccwpck_require__(9668)
+const path = __nccwpck_require__(5622)
+const rimraf = BB.promisify(__nccwpck_require__(9219))
+const ssri = __nccwpck_require__(3143)
+
+BB.promisifyAll(fs)
+
+const VerifyOpts = figgyPudding({
+  concurrency: {
+    default: 20
+  },
+  filter: {},
+  log: {
+    default: { silly () {} }
+  }
+})
+
+module.exports = verify
+function verify (cache, opts) {
+  opts = VerifyOpts(opts)
+  opts.log.silly('verify', 'verifying cache at', cache)
+  return BB.reduce([
+    markStartTime,
+    fixPerms,
+    garbageCollect,
+    rebuildIndex,
+    cleanTmp,
+    writeVerifile,
+    markEndTime
+  ], (stats, step, i) => {
+    const label = step.name || `step #${i}`
+    const start = new Date()
+    return BB.resolve(step(cache, opts)).then(s => {
+      s && Object.keys(s).forEach(k => {
+        stats[k] = s[k]
+      })
+      const end = new Date()
+      if (!stats.runTime) { stats.runTime = {} }
+      stats.runTime[label] = end - start
+      return stats
+    })
+  }, {}).tap(stats => {
+    stats.runTime.total = stats.endTime - stats.startTime
+    opts.log.silly('verify', 'verification finished for', cache, 'in', `${stats.runTime.total}ms`)
+  })
+}
+
+function markStartTime (cache, opts) {
+  return { startTime: new Date() }
+}
+
+function markEndTime (cache, opts) {
+  return { endTime: new Date() }
+}
+
+function fixPerms (cache, opts) {
+  opts.log.silly('verify', 'fixing cache permissions')
+  return fixOwner.mkdirfix(cache, cache).then(() => {
+    // TODO - fix file permissions too
+    return fixOwner.chownr(cache, cache)
+  }).then(() => null)
+}
+
+// Implements a naive mark-and-sweep tracing garbage collector.
+//
+// The algorithm is basically as follows:
+// 1. Read (and filter) all index entries ("pointers")
+// 2. Mark each integrity value as "live"
+// 3. Read entire filesystem tree in `content-vX/` dir
+// 4. If content is live, verify its checksum and delete it if it fails
+// 5. If content is not marked as live, rimraf it.
+//
+function garbageCollect (cache, opts) {
+  opts.log.silly('verify', 'garbage collecting content')
+  const indexStream = index.lsStream(cache)
+  const liveContent = new Set()
+  indexStream.on('data', entry => {
+    if (opts.filter && !opts.filter(entry)) { return }
+    liveContent.add(entry.integrity.toString())
+  })
+  return finished(indexStream).then(() => {
+    const contentDir = contentPath._contentDir(cache)
+    return glob(path.join(contentDir, '**'), {
+      follow: false,
+      nodir: true,
+      nosort: true
+    }).then(files => {
+      return BB.resolve({
+        verifiedContent: 0,
+        reclaimedCount: 0,
+        reclaimedSize: 0,
+        badContentCount: 0,
+        keptSize: 0
+      }).tap((stats) => BB.map(files, (f) => {
+        const split = f.split(/[/\\]/)
+        const digest = split.slice(split.length - 3).join('')
+        const algo = split[split.length - 4]
+        const integrity = ssri.fromHex(digest, algo)
+        if (liveContent.has(integrity.toString())) {
+          return verifyContent(f, integrity).then(info => {
+            if (!info.valid) {
+              stats.reclaimedCount++
+              stats.badContentCount++
+              stats.reclaimedSize += info.size
+            } else {
+              stats.verifiedContent++
+              stats.keptSize += info.size
+            }
+            return stats
+          })
+        } else {
+          // No entries refer to this content. We can delete.
+          stats.reclaimedCount++
+          return fs.statAsync(f).then(s => {
+            return rimraf(f).then(() => {
+              stats.reclaimedSize += s.size
+              return stats
+            })
+          })
+        }
+      }, { concurrency: opts.concurrency }))
+    })
+  })
+}
+
+function verifyContent (filepath, sri) {
+  return fs.statAsync(filepath).then(stat => {
+    const contentInfo = {
+      size: stat.size,
+      valid: true
+    }
+    return ssri.checkStream(
+      fs.createReadStream(filepath),
+      sri
+    ).catch(err => {
+      if (err.code !== 'EINTEGRITY') { throw err }
+      return rimraf(filepath).then(() => {
+        contentInfo.valid = false
+      })
+    }).then(() => contentInfo)
+  }).catch({ code: 'ENOENT' }, () => ({ size: 0, valid: false }))
+}
+
+function rebuildIndex (cache, opts) {
+  opts.log.silly('verify', 'rebuilding index')
+  return index.ls(cache).then(entries => {
+    const stats = {
+      missingContent: 0,
+      rejectedEntries: 0,
+      totalEntries: 0
+    }
+    const buckets = {}
+    for (let k in entries) {
+      if (entries.hasOwnProperty(k)) {
+        const hashed = index._hashKey(k)
+        const entry = entries[k]
+        const excluded = opts.filter && !opts.filter(entry)
+        excluded && stats.rejectedEntries++
+        if (buckets[hashed] && !excluded) {
+          buckets[hashed].push(entry)
+        } else if (buckets[hashed] && excluded) {
+          // skip
+        } else if (excluded) {
+          buckets[hashed] = []
+          buckets[hashed]._path = index._bucketPath(cache, k)
+        } else {
+          buckets[hashed] = [entry]
+          buckets[hashed]._path = index._bucketPath(cache, k)
+        }
+      }
+    }
+    return BB.map(Object.keys(buckets), key => {
+      return rebuildBucket(cache, buckets[key], stats, opts)
+    }, { concurrency: opts.concurrency }).then(() => stats)
+  })
+}
+
+function rebuildBucket (cache, bucket, stats, opts) {
+  return fs.truncateAsync(bucket._path).then(() => {
+    // This needs to be serialized because cacache explicitly
+    // lets very racy bucket conflicts clobber each other.
+    return BB.mapSeries(bucket, entry => {
+      const content = contentPath(cache, entry.integrity)
+      return fs.statAsync(content).then(() => {
+        return index.insert(cache, entry.key, entry.integrity, {
+          metadata: entry.metadata,
+          size: entry.size
+        }).then(() => { stats.totalEntries++ })
+      }).catch({ code: 'ENOENT' }, () => {
+        stats.rejectedEntries++
+        stats.missingContent++
+      })
+    })
+  })
+}
+
+function cleanTmp (cache, opts) {
+  opts.log.silly('verify', 'cleaning tmp directory')
+  return rimraf(path.join(cache, 'tmp'))
+}
+
+function writeVerifile (cache, opts) {
+  const verifile = path.join(cache, '_lastverified')
+  opts.log.silly('verify', 'writing verifile to ' + verifile)
+  try {
+    return fs.writeFileAsync(verifile, '' + (+(new Date())))
+  } finally {
+    fixOwner.chownr.sync(cache, verifile)
+  }
+}
+
+module.exports.lastRun = lastRun
+function lastRun (cache) {
+  return fs.readFileAsync(
+    path.join(cache, '_lastverified'), 'utf8'
+  ).then(data => new Date(+data))
+}
+
+
+/***/ }),
+
+/***/ 1435:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const ls = __nccwpck_require__(288)
+const get = __nccwpck_require__(6318)
+const put = __nccwpck_require__(2636)
+const rm = __nccwpck_require__(5012)
+const verify = __nccwpck_require__(2759)
+const setLocale = __nccwpck_require__(2632).setLocale
+const clearMemoized = __nccwpck_require__(5572).clearMemoized
+const tmp = __nccwpck_require__(2662)
+
+setLocale('en')
+
+const x = module.exports
+
+x.ls = cache => ls(cache)
+x.ls.stream = cache => ls.stream(cache)
+
+x.get = (cache, key, opts) => get(cache, key, opts)
+x.get.byDigest = (cache, hash, opts) => get.byDigest(cache, hash, opts)
+x.get.sync = (cache, key, opts) => get.sync(cache, key, opts)
+x.get.sync.byDigest = (cache, key, opts) => get.sync.byDigest(cache, key, opts)
+x.get.stream = (cache, key, opts) => get.stream(cache, key, opts)
+x.get.stream.byDigest = (cache, hash, opts) => get.stream.byDigest(cache, hash, opts)
+x.get.copy = (cache, key, dest, opts) => get.copy(cache, key, dest, opts)
+x.get.copy.byDigest = (cache, hash, dest, opts) => get.copy.byDigest(cache, hash, dest, opts)
+x.get.info = (cache, key) => get.info(cache, key)
+x.get.hasContent = (cache, hash) => get.hasContent(cache, hash)
+x.get.hasContent.sync = (cache, hash) => get.hasContent.sync(cache, hash)
+
+x.put = (cache, key, data, opts) => put(cache, key, data, opts)
+x.put.stream = (cache, key, opts) => put.stream(cache, key, opts)
+
+x.rm = (cache, key) => rm.entry(cache, key)
+x.rm.all = cache => rm.all(cache)
+x.rm.entry = x.rm
+x.rm.content = (cache, hash) => rm.content(cache, hash)
+
+x.setLocale = lang => setLocale(lang)
+x.clearMemoized = () => clearMemoized()
+
+x.tmp = {}
+x.tmp.mkdir = (cache, opts) => tmp.mkdir(cache, opts)
+x.tmp.withTmp = (cache, opts, cb) => tmp.withTmp(cache, opts, cb)
+
+x.verify = (cache, opts) => verify(cache, opts)
+x.verify.lastRun = cache => verify.lastRun(cache)
+
+
+/***/ }),
+
+/***/ 288:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+var index = __nccwpck_require__(9668)
+
+module.exports = index.ls
+module.exports.stream = index.lsStream
+
+
+/***/ }),
+
+/***/ 2636:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const figgyPudding = __nccwpck_require__(3571)
+const index = __nccwpck_require__(9668)
+const memo = __nccwpck_require__(5572)
+const write = __nccwpck_require__(7106)
+const to = __nccwpck_require__(3758).to
+
+const PutOpts = figgyPudding({
+  algorithms: {
+    default: ['sha512']
+  },
+  integrity: {},
+  memoize: {},
+  metadata: {},
+  pickAlgorithm: {},
+  size: {},
+  tmpPrefix: {},
+  single: {},
+  sep: {},
+  error: {},
+  strict: {}
+})
+
+module.exports = putData
+function putData (cache, key, data, opts) {
+  opts = PutOpts(opts)
+  return write(cache, data, opts).then(res => {
+    return index.insert(
+      cache, key, res.integrity, opts.concat({ size: res.size })
+    ).then(entry => {
+      if (opts.memoize) {
+        memo.put(cache, entry, data, opts)
+      }
+      return res.integrity
+    })
+  })
+}
+
+module.exports.stream = putStream
+function putStream (cache, key, opts) {
+  opts = PutOpts(opts)
+  let integrity
+  let size
+  const contentStream = write.stream(
+    cache, opts
+  ).on('integrity', int => {
+    integrity = int
+  }).on('size', s => {
+    size = s
+  })
+  let memoData
+  let memoTotal = 0
+  const stream = to((chunk, enc, cb) => {
+    contentStream.write(chunk, enc, () => {
+      if (opts.memoize) {
+        if (!memoData) { memoData = [] }
+        memoData.push(chunk)
+        memoTotal += chunk.length
+      }
+      cb()
+    })
+  }, cb => {
+    contentStream.end(() => {
+      index.insert(cache, key, integrity, opts.concat({ size })).then(entry => {
+        if (opts.memoize) {
+          memo.put(cache, entry, Buffer.concat(memoData, memoTotal), opts)
+        }
+        stream.emit('integrity', integrity)
+        cb()
+      })
+    })
+  })
+  let erred = false
+  stream.once('error', err => {
+    if (erred) { return }
+    erred = true
+    contentStream.emit('error', err)
+  })
+  contentStream.once('error', err => {
+    if (erred) { return }
+    erred = true
+    stream.emit('error', err)
+  })
+  return stream
+}
+
+
+/***/ }),
+
+/***/ 5012:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+const BB = __nccwpck_require__(8710)
+
+const index = __nccwpck_require__(9668)
+const memo = __nccwpck_require__(5572)
+const path = __nccwpck_require__(5622)
+const rimraf = BB.promisify(__nccwpck_require__(9219))
+const rmContent = __nccwpck_require__(2596)
+
+module.exports = entry
+module.exports.entry = entry
+function entry (cache, key) {
+  memo.clearMemoized()
+  return index.delete(cache, key)
+}
+
+module.exports.content = content
+function content (cache, integrity) {
+  memo.clearMemoized()
+  return rmContent(cache, integrity)
+}
+
+module.exports.all = all
+function all (cache) {
+  memo.clearMemoized()
+  return rimraf(path.join(cache, '*(content-*|index-*)'))
+}
+
+
+/***/ }),
+
+/***/ 2759:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+module.exports = __nccwpck_require__(7)
+
+
+/***/ }),
+
+/***/ 4357:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+const fs = __nccwpck_require__(5747)
+const path = __nccwpck_require__(5622)
+
+/* istanbul ignore next */
+const LCHOWN = fs.lchown ? 'lchown' : 'chown'
+/* istanbul ignore next */
+const LCHOWNSYNC = fs.lchownSync ? 'lchownSync' : 'chownSync'
+
+/* istanbul ignore next */
+const needEISDIRHandled = fs.lchown &&
+  !process.version.match(/v1[1-9]+\./) &&
+  !process.version.match(/v10\.[6-9]/)
+
+const lchownSync = (path, uid, gid) => {
+  try {
+    return fs[LCHOWNSYNC](path, uid, gid)
+  } catch (er) {
+    if (er.code !== 'ENOENT')
+      throw er
+  }
+}
+
+/* istanbul ignore next */
+const chownSync = (path, uid, gid) => {
+  try {
+    return fs.chownSync(path, uid, gid)
+  } catch (er) {
+    if (er.code !== 'ENOENT')
+      throw er
+  }
+}
+
+/* istanbul ignore next */
+const handleEISDIR =
+  needEISDIRHandled ? (path, uid, gid, cb) => er => {
+    // Node prior to v10 had a very questionable implementation of
+    // fs.lchown, which would always try to call fs.open on a directory
+    // Fall back to fs.chown in those cases.
+    if (!er || er.code !== 'EISDIR')
+      cb(er)
+    else
+      fs.chown(path, uid, gid, cb)
+  }
+  : (_, __, ___, cb) => cb
+
+/* istanbul ignore next */
+const handleEISDirSync =
+  needEISDIRHandled ? (path, uid, gid) => {
+    try {
+      return lchownSync(path, uid, gid)
+    } catch (er) {
+      if (er.code !== 'EISDIR')
+        throw er
+      chownSync(path, uid, gid)
+    }
+  }
+  : (path, uid, gid) => lchownSync(path, uid, gid)
+
+// fs.readdir could only accept an options object as of node v6
+const nodeVersion = process.version
+let readdir = (path, options, cb) => fs.readdir(path, options, cb)
+let readdirSync = (path, options) => fs.readdirSync(path, options)
+/* istanbul ignore next */
+if (/^v4\./.test(nodeVersion))
+  readdir = (path, options, cb) => fs.readdir(path, cb)
+
+const chown = (cpath, uid, gid, cb) => {
+  fs[LCHOWN](cpath, uid, gid, handleEISDIR(cpath, uid, gid, er => {
+    // Skip ENOENT error
+    cb(er && er.code !== 'ENOENT' ? er : null)
+  }))
+}
+
+const chownrKid = (p, child, uid, gid, cb) => {
+  if (typeof child === 'string')
+    return fs.lstat(path.resolve(p, child), (er, stats) => {
+      // Skip ENOENT error
+      if (er)
+        return cb(er.code !== 'ENOENT' ? er : null)
+      stats.name = child
+      chownrKid(p, stats, uid, gid, cb)
+    })
+
+  if (child.isDirectory()) {
+    chownr(path.resolve(p, child.name), uid, gid, er => {
+      if (er)
+        return cb(er)
+      const cpath = path.resolve(p, child.name)
+      chown(cpath, uid, gid, cb)
+    })
+  } else {
+    const cpath = path.resolve(p, child.name)
+    chown(cpath, uid, gid, cb)
+  }
+}
+
+
+const chownr = (p, uid, gid, cb) => {
+  readdir(p, { withFileTypes: true }, (er, children) => {
+    // any error other than ENOTDIR or ENOTSUP means it's not readable,
+    // or doesn't exist.  give up.
+    if (er) {
+      if (er.code === 'ENOENT')
+        return cb()
+      else if (er.code !== 'ENOTDIR' && er.code !== 'ENOTSUP')
+        return cb(er)
+    }
+    if (er || !children.length)
+      return chown(p, uid, gid, cb)
+
+    let len = children.length
+    let errState = null
+    const then = er => {
+      if (errState)
+        return
+      if (er)
+        return cb(errState = er)
+      if (-- len === 0)
+        return chown(p, uid, gid, cb)
+    }
+
+    children.forEach(child => chownrKid(p, child, uid, gid, then))
+  })
+}
+
+const chownrKidSync = (p, child, uid, gid) => {
+  if (typeof child === 'string') {
+    try {
+      const stats = fs.lstatSync(path.resolve(p, child))
+      stats.name = child
+      child = stats
+    } catch (er) {
+      if (er.code === 'ENOENT')
+        return
+      else
+        throw er
+    }
+  }
+
+  if (child.isDirectory())
+    chownrSync(path.resolve(p, child.name), uid, gid)
+
+  handleEISDirSync(path.resolve(p, child.name), uid, gid)
+}
+
+const chownrSync = (p, uid, gid) => {
+  let children
+  try {
+    children = readdirSync(p, { withFileTypes: true })
+  } catch (er) {
+    if (er.code === 'ENOENT')
+      return
+    else if (er.code === 'ENOTDIR' || er.code === 'ENOTSUP')
+      return handleEISDirSync(p, uid, gid)
+    else
+      throw er
+  }
+
+  if (children && children.length)
+    children.forEach(child => chownrKidSync(p, child, uid, gid))
+
+  return handleEISDirSync(p, uid, gid)
+}
+
+module.exports = chownr
+chownr.sync = chownrSync
+
+
+/***/ }),
+
+/***/ 7643:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+
+"use strict";
+
+
+// A linked list to keep track of recently-used-ness
+const Yallist = __nccwpck_require__(5891)
+
+const MAX = Symbol('max')
+const LENGTH = Symbol('length')
+const LENGTH_CALCULATOR = Symbol('lengthCalculator')
+const ALLOW_STALE = Symbol('allowStale')
+const MAX_AGE = Symbol('maxAge')
+const DISPOSE = Symbol('dispose')
+const NO_DISPOSE_ON_SET = Symbol('noDisposeOnSet')
+const LRU_LIST = Symbol('lruList')
+const CACHE = Symbol('cache')
+const UPDATE_AGE_ON_GET = Symbol('updateAgeOnGet')
+
+const naiveLength = () => 1
+
+// lruList is a yallist where the head is the youngest
+// item, and the tail is the oldest.  the list contains the Hit
+// objects as the entries.
+// Each Hit object has a reference to its Yallist.Node.  This
+// never changes.
+//
+// cache is a Map (or PseudoMap) that matches the keys to
+// the Yallist.Node object.
+class LRUCache {
+  constructor (options) {
+    if (typeof options === 'number')
+      options = { max: options }
+
+    if (!options)
+      options = {}
+
+    if (options.max && (typeof options.max !== 'number' || options.max < 0))
+      throw new TypeError('max must be a non-negative number')
+    // Kind of weird to have a default max of Infinity, but oh well.
+    const max = this[MAX] = options.max || Infinity
+
+    const lc = options.length || naiveLength
+    this[LENGTH_CALCULATOR] = (typeof lc !== 'function') ? naiveLength : lc
+    this[ALLOW_STALE] = options.stale || false
+    if (options.maxAge && typeof options.maxAge !== 'number')
+      throw new TypeError('maxAge must be a number')
+    this[MAX_AGE] = options.maxAge || 0
+    this[DISPOSE] = options.dispose
+    this[NO_DISPOSE_ON_SET] = options.noDisposeOnSet || false
+    this[UPDATE_AGE_ON_GET] = options.updateAgeOnGet || false
+    this.reset()
+  }
+
+  // resize the cache when the max changes.
+  set max (mL) {
+    if (typeof mL !== 'number' || mL < 0)
+      throw new TypeError('max must be a non-negative number')
+
+    this[MAX] = mL || Infinity
+    trim(this)
+  }
+  get max () {
+    return this[MAX]
+  }
+
+  set allowStale (allowStale) {
+    this[ALLOW_STALE] = !!allowStale
+  }
+  get allowStale () {
+    return this[ALLOW_STALE]
+  }
+
+  set maxAge (mA) {
+    if (typeof mA !== 'number')
+      throw new TypeError('maxAge must be a non-negative number')
+
+    this[MAX_AGE] = mA
+    trim(this)
+  }
+  get maxAge () {
+    return this[MAX_AGE]
+  }
+
+  // resize the cache when the lengthCalculator changes.
+  set lengthCalculator (lC) {
+    if (typeof lC !== 'function')
+      lC = naiveLength
+
+    if (lC !== this[LENGTH_CALCULATOR]) {
+      this[LENGTH_CALCULATOR] = lC
+      this[LENGTH] = 0
+      this[LRU_LIST].forEach(hit => {
+        hit.length = this[LENGTH_CALCULATOR](hit.value, hit.key)
+        this[LENGTH] += hit.length
+      })
+    }
+    trim(this)
+  }
+  get lengthCalculator () { return this[LENGTH_CALCULATOR] }
+
+  get length () { return this[LENGTH] }
+  get itemCount () { return this[LRU_LIST].length }
+
+  rforEach (fn, thisp) {
+    thisp = thisp || this
+    for (let walker = this[LRU_LIST].tail; walker !== null;) {
+      const prev = walker.prev
+      forEachStep(this, fn, walker, thisp)
+      walker = prev
+    }
+  }
+
+  forEach (fn, thisp) {
+    thisp = thisp || this
+    for (let walker = this[LRU_LIST].head; walker !== null;) {
+      const next = walker.next
+      forEachStep(this, fn, walker, thisp)
+      walker = next
+    }
+  }
+
+  keys () {
+    return this[LRU_LIST].toArray().map(k => k.key)
+  }
+
+  values () {
+    return this[LRU_LIST].toArray().map(k => k.value)
+  }
+
+  reset () {
+    if (this[DISPOSE] &&
+        this[LRU_LIST] &&
+        this[LRU_LIST].length) {
+      this[LRU_LIST].forEach(hit => this[DISPOSE](hit.key, hit.value))
+    }
+
+    this[CACHE] = new Map() // hash of items by key
+    this[LRU_LIST] = new Yallist() // list of items in order of use recency
+    this[LENGTH] = 0 // length of items in the list
+  }
+
+  dump () {
+    return this[LRU_LIST].map(hit =>
+      isStale(this, hit) ? false : {
+        k: hit.key,
+        v: hit.value,
+        e: hit.now + (hit.maxAge || 0)
+      }).toArray().filter(h => h)
+  }
+
+  dumpLru () {
+    return this[LRU_LIST]
+  }
+
+  set (key, value, maxAge) {
+    maxAge = maxAge || this[MAX_AGE]
+
+    if (maxAge && typeof maxAge !== 'number')
+      throw new TypeError('maxAge must be a number')
+
+    const now = maxAge ? Date.now() : 0
+    const len = this[LENGTH_CALCULATOR](value, key)
+
+    if (this[CACHE].has(key)) {
+      if (len > this[MAX]) {
+        del(this, this[CACHE].get(key))
+        return false
+      }
+
+      const node = this[CACHE].get(key)
+      const item = node.value
+
+      // dispose of the old one before overwriting
+      // split out into 2 ifs for better coverage tracking
+      if (this[DISPOSE]) {
+        if (!this[NO_DISPOSE_ON_SET])
+          this[DISPOSE](key, item.value)
+      }
+
+      item.now = now
+      item.maxAge = maxAge
+      item.value = value
+      this[LENGTH] += len - item.length
+      item.length = len
+      this.get(key)
+      trim(this)
+      return true
+    }
+
+    const hit = new Entry(key, value, len, now, maxAge)
+
+    // oversized objects fall out of cache automatically.
+    if (hit.length > this[MAX]) {
+      if (this[DISPOSE])
+        this[DISPOSE](key, value)
+
+      return false
+    }
+
+    this[LENGTH] += hit.length
+    this[LRU_LIST].unshift(hit)
+    this[CACHE].set(key, this[LRU_LIST].head)
+    trim(this)
+    return true
+  }
+
+  has (key) {
+    if (!this[CACHE].has(key)) return false
+    const hit = this[CACHE].get(key).value
+    return !isStale(this, hit)
+  }
+
+  get (key) {
+    return get(this, key, true)
+  }
+
+  peek (key) {
+    return get(this, key, false)
+  }
+
+  pop () {
+    const node = this[LRU_LIST].tail
+    if (!node)
+      return null
+
+    del(this, node)
+    return node.value
+  }
+
+  del (key) {
+    del(this, this[CACHE].get(key))
+  }
+
+  load (arr) {
+    // reset the cache
+    this.reset()
+
+    const now = Date.now()
+    // A previous serialized cache has the most recent items first
+    for (let l = arr.length - 1; l >= 0; l--) {
+      const hit = arr[l]
+      const expiresAt = hit.e || 0
+      if (expiresAt === 0)
+        // the item was created without expiration in a non aged cache
+        this.set(hit.k, hit.v)
+      else {
+        const maxAge = expiresAt - now
+        // dont add already expired items
+        if (maxAge > 0) {
+          this.set(hit.k, hit.v, maxAge)
+        }
+      }
+    }
+  }
+
+  prune () {
+    this[CACHE].forEach((value, key) => get(this, key, false))
+  }
+}
+
+const get = (self, key, doUse) => {
+  const node = self[CACHE].get(key)
+  if (node) {
+    const hit = node.value
+    if (isStale(self, hit)) {
+      del(self, node)
+      if (!self[ALLOW_STALE])
+        return undefined
+    } else {
+      if (doUse) {
+        if (self[UPDATE_AGE_ON_GET])
+          node.value.now = Date.now()
+        self[LRU_LIST].unshiftNode(node)
+      }
+    }
+    return hit.value
+  }
+}
+
+const isStale = (self, hit) => {
+  if (!hit || (!hit.maxAge && !self[MAX_AGE]))
+    return false
+
+  const diff = Date.now() - hit.now
+  return hit.maxAge ? diff > hit.maxAge
+    : self[MAX_AGE] && (diff > self[MAX_AGE])
+}
+
+const trim = self => {
+  if (self[LENGTH] > self[MAX]) {
+    for (let walker = self[LRU_LIST].tail;
+      self[LENGTH] > self[MAX] && walker !== null;) {
+      // We know that we're about to delete this one, and also
+      // what the next least recently used key will be, so just
+      // go ahead and set it now.
+      const prev = walker.prev
+      del(self, walker)
+      walker = prev
+    }
+  }
+}
+
+const del = (self, node) => {
+  if (node) {
+    const hit = node.value
+    if (self[DISPOSE])
+      self[DISPOSE](hit.key, hit.value)
+
+    self[LENGTH] -= hit.length
+    self[CACHE].delete(hit.key)
+    self[LRU_LIST].removeNode(node)
+  }
+}
+
+class Entry {
+  constructor (key, value, length, now, maxAge) {
+    this.key = key
+    this.value = value
+    this.length = length
+    this.now = now
+    this.maxAge = maxAge || 0
+  }
+}
+
+const forEachStep = (self, fn, node, thisp) => {
+  let hit = node.value
+  if (isStale(self, hit)) {
+    del(self, node)
+    if (!self[ALLOW_STALE])
+      hit = undefined
+  }
+  if (hit)
+    fn.call(thisp, hit.value, hit.key, self)
+}
+
+module.exports = LRUCache
+
+
+/***/ }),
+
+/***/ 3143:
 /***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
 
 "use strict";
@@ -15398,65 +15041,15 @@ function getPrioritizedHash (algo1, algo2) {
 
 /***/ }),
 
-/***/ 9732:
-/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
+/***/ 9988:
+/***/ (function(module) {
 
-var eos = __nccwpck_require__(1205)
-var shift = __nccwpck_require__(6121)
+"use strict";
 
-module.exports = each
-
-function each (stream, fn, cb) {
-  var want = true
-  var error = null
-  var ended = false
-  var running = false
-  var calling = false
-
-  stream.on('readable', onreadable)
-  onreadable()
-
-  if (cb) eos(stream, {readable: true, writable: false}, done)
-  return stream
-
-  function done (err) {
-    if (!error) error = err
-    ended = true
-    if (!running) cb(error)
-  }
-
-  function onreadable () {
-    if (want) read()
-  }
-
-  function afterRead (err) {
-    running = false
-
-    if (err) {
-      error = err
-      if (ended) return cb(error)
-      stream.destroy(err)
-      return
-    }
-    if (ended) return cb(error)
-    if (!calling) read()
-  }
-
-  function read () {
-    while (!running && !ended) {
-      want = false
-
-      var data = shift(stream)
-      if (ended) return
-      if (data === null) {
-        want = true
-        return
-      }
-
-      running = true
-      calling = true
-      fn(data, afterRead)
-      calling = false
+module.exports = function (Yallist) {
+  Yallist.prototype[Symbol.iterator] = function* () {
+    for (let walker = this.head; walker; walker = walker.next) {
+      yield walker.value
     }
   }
 }
@@ -15464,29 +15057,436 @@ function each (stream, fn, cb) {
 
 /***/ }),
 
-/***/ 6121:
-/***/ (function(module) {
+/***/ 5891:
+/***/ (function(module, __unused_webpack_exports, __nccwpck_require__) {
 
-module.exports = shift
+"use strict";
 
-function shift (stream) {
-  var rs = stream._readableState
-  if (!rs) return null
-  return (rs.objectMode || typeof stream._duplexState === 'number') ? stream.read() : stream.read(getStateLength(rs))
-}
+module.exports = Yallist
 
-function getStateLength (state) {
-  if (state.buffer.length) {
-    // Since node 6.3.0 state.buffer is a BufferList not an array
-    if (state.buffer.head) {
-      return state.buffer.head.data.length
-    }
+Yallist.Node = Node
+Yallist.create = Yallist
 
-    return state.buffer[0].length
+function Yallist (list) {
+  var self = this
+  if (!(self instanceof Yallist)) {
+    self = new Yallist()
   }
 
-  return state.length
+  self.tail = null
+  self.head = null
+  self.length = 0
+
+  if (list && typeof list.forEach === 'function') {
+    list.forEach(function (item) {
+      self.push(item)
+    })
+  } else if (arguments.length > 0) {
+    for (var i = 0, l = arguments.length; i < l; i++) {
+      self.push(arguments[i])
+    }
+  }
+
+  return self
 }
+
+Yallist.prototype.removeNode = function (node) {
+  if (node.list !== this) {
+    throw new Error('removing node which does not belong to this list')
+  }
+
+  var next = node.next
+  var prev = node.prev
+
+  if (next) {
+    next.prev = prev
+  }
+
+  if (prev) {
+    prev.next = next
+  }
+
+  if (node === this.head) {
+    this.head = next
+  }
+  if (node === this.tail) {
+    this.tail = prev
+  }
+
+  node.list.length--
+  node.next = null
+  node.prev = null
+  node.list = null
+
+  return next
+}
+
+Yallist.prototype.unshiftNode = function (node) {
+  if (node === this.head) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node)
+  }
+
+  var head = this.head
+  node.list = this
+  node.next = head
+  if (head) {
+    head.prev = node
+  }
+
+  this.head = node
+  if (!this.tail) {
+    this.tail = node
+  }
+  this.length++
+}
+
+Yallist.prototype.pushNode = function (node) {
+  if (node === this.tail) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node)
+  }
+
+  var tail = this.tail
+  node.list = this
+  node.prev = tail
+  if (tail) {
+    tail.next = node
+  }
+
+  this.tail = node
+  if (!this.head) {
+    this.head = node
+  }
+  this.length++
+}
+
+Yallist.prototype.push = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    push(this, arguments[i])
+  }
+  return this.length
+}
+
+Yallist.prototype.unshift = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    unshift(this, arguments[i])
+  }
+  return this.length
+}
+
+Yallist.prototype.pop = function () {
+  if (!this.tail) {
+    return undefined
+  }
+
+  var res = this.tail.value
+  this.tail = this.tail.prev
+  if (this.tail) {
+    this.tail.next = null
+  } else {
+    this.head = null
+  }
+  this.length--
+  return res
+}
+
+Yallist.prototype.shift = function () {
+  if (!this.head) {
+    return undefined
+  }
+
+  var res = this.head.value
+  this.head = this.head.next
+  if (this.head) {
+    this.head.prev = null
+  } else {
+    this.tail = null
+  }
+  this.length--
+  return res
+}
+
+Yallist.prototype.forEach = function (fn, thisp) {
+  thisp = thisp || this
+  for (var walker = this.head, i = 0; walker !== null; i++) {
+    fn.call(thisp, walker.value, i, this)
+    walker = walker.next
+  }
+}
+
+Yallist.prototype.forEachReverse = function (fn, thisp) {
+  thisp = thisp || this
+  for (var walker = this.tail, i = this.length - 1; walker !== null; i--) {
+    fn.call(thisp, walker.value, i, this)
+    walker = walker.prev
+  }
+}
+
+Yallist.prototype.get = function (n) {
+  for (var i = 0, walker = this.head; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.next
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+}
+
+Yallist.prototype.getReverse = function (n) {
+  for (var i = 0, walker = this.tail; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.prev
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+}
+
+Yallist.prototype.map = function (fn, thisp) {
+  thisp = thisp || this
+  var res = new Yallist()
+  for (var walker = this.head; walker !== null;) {
+    res.push(fn.call(thisp, walker.value, this))
+    walker = walker.next
+  }
+  return res
+}
+
+Yallist.prototype.mapReverse = function (fn, thisp) {
+  thisp = thisp || this
+  var res = new Yallist()
+  for (var walker = this.tail; walker !== null;) {
+    res.push(fn.call(thisp, walker.value, this))
+    walker = walker.prev
+  }
+  return res
+}
+
+Yallist.prototype.reduce = function (fn, initial) {
+  var acc
+  var walker = this.head
+  if (arguments.length > 1) {
+    acc = initial
+  } else if (this.head) {
+    walker = this.head.next
+    acc = this.head.value
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = 0; walker !== null; i++) {
+    acc = fn(acc, walker.value, i)
+    walker = walker.next
+  }
+
+  return acc
+}
+
+Yallist.prototype.reduceReverse = function (fn, initial) {
+  var acc
+  var walker = this.tail
+  if (arguments.length > 1) {
+    acc = initial
+  } else if (this.tail) {
+    walker = this.tail.prev
+    acc = this.tail.value
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = this.length - 1; walker !== null; i--) {
+    acc = fn(acc, walker.value, i)
+    walker = walker.prev
+  }
+
+  return acc
+}
+
+Yallist.prototype.toArray = function () {
+  var arr = new Array(this.length)
+  for (var i = 0, walker = this.head; walker !== null; i++) {
+    arr[i] = walker.value
+    walker = walker.next
+  }
+  return arr
+}
+
+Yallist.prototype.toArrayReverse = function () {
+  var arr = new Array(this.length)
+  for (var i = 0, walker = this.tail; walker !== null; i++) {
+    arr[i] = walker.value
+    walker = walker.prev
+  }
+  return arr
+}
+
+Yallist.prototype.slice = function (from, to) {
+  to = to || this.length
+  if (to < 0) {
+    to += this.length
+  }
+  from = from || 0
+  if (from < 0) {
+    from += this.length
+  }
+  var ret = new Yallist()
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0
+  }
+  if (to > this.length) {
+    to = this.length
+  }
+  for (var i = 0, walker = this.head; walker !== null && i < from; i++) {
+    walker = walker.next
+  }
+  for (; walker !== null && i < to; i++, walker = walker.next) {
+    ret.push(walker.value)
+  }
+  return ret
+}
+
+Yallist.prototype.sliceReverse = function (from, to) {
+  to = to || this.length
+  if (to < 0) {
+    to += this.length
+  }
+  from = from || 0
+  if (from < 0) {
+    from += this.length
+  }
+  var ret = new Yallist()
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0
+  }
+  if (to > this.length) {
+    to = this.length
+  }
+  for (var i = this.length, walker = this.tail; walker !== null && i > to; i--) {
+    walker = walker.prev
+  }
+  for (; walker !== null && i > from; i--, walker = walker.prev) {
+    ret.push(walker.value)
+  }
+  return ret
+}
+
+Yallist.prototype.splice = function (start, deleteCount /*, ...nodes */) {
+  if (start > this.length) {
+    start = this.length - 1
+  }
+  if (start < 0) {
+    start = this.length + start;
+  }
+
+  for (var i = 0, walker = this.head; walker !== null && i < start; i++) {
+    walker = walker.next
+  }
+
+  var ret = []
+  for (var i = 0; walker && i < deleteCount; i++) {
+    ret.push(walker.value)
+    walker = this.removeNode(walker)
+  }
+  if (walker === null) {
+    walker = this.tail
+  }
+
+  if (walker !== this.head && walker !== this.tail) {
+    walker = walker.prev
+  }
+
+  for (var i = 2; i < arguments.length; i++) {
+    walker = insert(this, walker, arguments[i])
+  }
+  return ret;
+}
+
+Yallist.prototype.reverse = function () {
+  var head = this.head
+  var tail = this.tail
+  for (var walker = head; walker !== null; walker = walker.prev) {
+    var p = walker.prev
+    walker.prev = walker.next
+    walker.next = p
+  }
+  this.head = tail
+  this.tail = head
+  return this
+}
+
+function insert (self, node, value) {
+  var inserted = node === self.head ?
+    new Node(value, null, node, self) :
+    new Node(value, node, node.next, self)
+
+  if (inserted.next === null) {
+    self.tail = inserted
+  }
+  if (inserted.prev === null) {
+    self.head = inserted
+  }
+
+  self.length++
+
+  return inserted
+}
+
+function push (self, item) {
+  self.tail = new Node(item, self.tail, null, self)
+  if (!self.head) {
+    self.head = self.tail
+  }
+  self.length++
+}
+
+function unshift (self, item) {
+  self.head = new Node(item, null, self.head, self)
+  if (!self.tail) {
+    self.tail = self.head
+  }
+  self.length++
+}
+
+function Node (value, prev, next, list) {
+  if (!(this instanceof Node)) {
+    return new Node(value, prev, next, list)
+  }
+
+  this.list = list
+  this.value = value
+
+  if (prev) {
+    prev.next = this
+    this.prev = prev
+  } else {
+    this.prev = null
+  }
+
+  if (next) {
+    next.prev = this
+    this.next = next
+  } else {
+    this.next = null
+  }
+}
+
+try {
+  // add if support for Symbol.iterator is present
+  __nccwpck_require__(9988)(Yallist)
+} catch (er) {}
 
 
 /***/ }),
@@ -16540,7 +16540,7 @@ module.exports = function (opts) {
 
 /***/ }),
 
-/***/ 1666:
+/***/ 6705:
 /***/ (function(module) {
 
 "use strict";
@@ -16690,6 +16690,6 @@ module.exports = require("util");;
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __nccwpck_require__(2341);
+/******/ 	return __nccwpck_require__(1435);
 /******/ })()
 ;
