@@ -42,8 +42,12 @@ export async function ncc_babel_bundle(task, opts) {
 }
 
 const babelBundlePackages = {
-  'code-frame': '@umijs/deps/compiled/babel/code-frame',
+  '@babel/code-frame': '@umijs/deps/compiled/babel/code-frame',
   '@babel/core': '@umijs/deps/compiled/babel/core',
+  '@babel/parser': '@umijs/deps/compiled/babel/parser',
+  '@babel/register': '@umijs/deps/compiled/babel/register',
+  '@babel/traverse': '@umijs/deps/compiled/babel/traverse',
+  '@babel/types': '@umijs/deps/compiled/babel/types',
   '@babel/preset-env': '@umijs/deps/compiled/babel/preset-env',
   '@babel/preset-react': '@umijs/deps/compiled/babel/preset-react',
   '@babel/preset-typescript': '@umijs/deps/compiled/babel/preset-typescript',
@@ -679,6 +683,7 @@ export async function ncc_webpack_sources2(task, opts) {
     .target('compiled/webpack-sources2')
 }
 
+externals['webpack'] = '@umijs/deps/compiled/webpack/webpack'
 export async function ncc_webpack_bundle4(task, opts) {
   await task
     .source(opts.src || 'bundles/webpack/bundle4.js')
@@ -689,7 +694,7 @@ export async function ncc_webpack_bundle4(task, opts) {
       minify: false,
       target: 'es5',
     })
-    .target('compiled/webpack')
+    .target('compiled/webpack/4')
 }
 
 export async function ncc_webpack_bundle5(task, opts) {
@@ -708,7 +713,7 @@ export async function ncc_webpack_bundle5(task, opts) {
       minify: false,
       target: 'es5',
     })
-    .target('compiled/webpack');
+    .target('compiled/webpack/5');
 }
 
 externals['@hapi/joi'] = '@umijs/deps/compiled/@hapi/joi';

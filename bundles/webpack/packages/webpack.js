@@ -7,12 +7,12 @@ let initializedWebpack4 = false;
 let initFns = [];
 exports.init = function (useWebpack5) {
   if (useWebpack5) {
-    Object.assign(exports, require('./bundle5')());
+    Object.assign(exports, require('./5/bundle5')());
     exports.isWebpack5 = true;
     if (!initializedWebpack5) for (const cb of initFns) cb();
     initializedWebpack5 = true;
   } else {
-    Object.assign(exports, require('./bundle4')());
+    Object.assign(exports, require('./4/bundle4')());
     exports.isWebpack5 = false;
     if (!initializedWebpack4) for (const cb of initFns) cb();
     initializedWebpack4 = true;
