@@ -27,6 +27,36 @@ export async function ncc_address(task, opts) {
     .target('compiled/address');
 }
 
+export async function ncc_babel_bundle(task, opts) {
+  const bundleExternals = { ...externals }
+  for (const pkg of Object.keys(babelBundlePackages))
+    delete bundleExternals[pkg]
+  await task
+    .source(opts.src || 'bundles/babel/bundle.js')
+    .ncc({
+      packageName: '@babel/core',
+      bundleName: 'babel',
+      externals: bundleExternals,
+    })
+    .target('compiled/babel')
+}
+
+const babelBundlePackages = {
+  'code-frame': '@umijs/deps/compiled/babel/code-frame',
+  '@babel/core': '@umijs/deps/compiled/babel/core',
+  '@babel/preset-env': '@umijs/deps/compiled/babel/preset-env',
+  '@babel/preset-react': '@umijs/deps/compiled/babel/preset-react',
+  '@babel/preset-typescript': '@umijs/deps/compiled/babel/preset-typescript',
+}
+
+Object.assign(externals, babelBundlePackages)
+
+export async function ncc_babel_bundle_packages(task, opts) {
+  await task
+    .source(opts.src || 'bundles/babel/packages/*')
+    .target('compiled/babel/')
+}
+
 externals['chalk'] = '@umijs/deps/compiled/chalk';
 export async function ncc_chalk(task, opts) {
   await task
@@ -706,6 +736,8 @@ export async function ncc(task) {
     .clear('compiled')
     .parallel([
       'ncc_address',
+      'ncc_babel_bundle',
+      'ncc_babel_bundle_packages',
       'ncc_chalk',
       'ncc_cheerio',
       'ncc_cliui',
@@ -773,7 +805,7 @@ export async function ncc(task) {
       'ncc_webpack_bundle_packages',
       'ncc_hapi_joi',
       // depends on @hapi/joi
-      // oom?
+      // json-schema-to-typescript 导致 ncc 打包卡住
       // 'ncc_joi2types',
     ]);
 }
