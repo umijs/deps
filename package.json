@@ -10,8 +10,7 @@
     ]
   },
   "files": [
-    "compiled",
-    "index.js"
+    "compiled"
   ],
   "dependencies": {
     "chokidar": "3.5.1",
