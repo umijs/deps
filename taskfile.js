@@ -117,6 +117,16 @@ export async function ncc_css_modules_typescript_loader(task, opts) {
     .target('compiled/css-modules-typescript-loader');
 }
 
+externals['compression'] = '@umijs/deps/compiled/compression';
+export async function ncc_compression(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('compression'))
+    )
+    .ncc({ packageName: 'compression', externals })
+    .target('compiled/compression');
+}
+
 externals['debug'] = '@umijs/deps/compiled/debug';
 export async function ncc_debug(task, opts) {
   await task
@@ -167,6 +177,16 @@ export async function ncc_execa(task, opts) {
     .target('compiled/execa');
 }
 
+externals['express'] = '@umijs/deps/compiled/express';
+export async function ncc_express(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('express'))
+    )
+    .ncc({ packageName: 'express', externals })
+    .target('compiled/express');
+}
+
 externals['file-loader'] = '@umijs/deps/compiled/file-loader';
 export async function ncc_file_loader(task, opts) {
   await task
@@ -215,6 +235,26 @@ export async function ncc_got(task, opts) {
     )
     .ncc({ packageName: 'got', externals })
     .target('compiled/got');
+}
+
+externals['http-proxy-middleware'] = '@umijs/deps/compiled/http-proxy-middleware';
+export async function ncc_http_proxy_middleware(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('http-proxy-middleware'))
+    )
+    .ncc({ packageName: 'http-proxy-middleware', externals })
+    .target('compiled/http-proxy-middleware');
+}
+
+externals['immer'] = '@umijs/deps/compiled/immer';
+export async function ncc_immer(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('immer'))
+    )
+    .ncc({ packageName: 'immer', externals })
+    .target('compiled/immer');
 }
 
 // don't external
@@ -426,6 +466,26 @@ export async function ncc_serialize_javascript(task, opts) {
     )
     .ncc({ packageName: 'serialize-javascript', externals })
     .target('compiled/serialize-javascript');
+}
+
+externals['sockjs'] = '@umijs/deps/compiled/sockjs';
+export async function ncc_sockjs(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('sockjs'))
+    )
+    .ncc({ packageName: 'sockjs', externals })
+    .target('compiled/sockjs');
+}
+
+externals['spdy'] = '@umijs/deps/compiled/spdy';
+export async function ncc_spdy(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('spdy'))
+    )
+    .ncc({ packageName: 'spdy', externals })
+    .target('compiled/spdy');
 }
 
 externals['speed-measure-webpack-plugin'] = '@umijs/deps/compiled/speed-measure-webpack-plugin';
@@ -645,6 +705,7 @@ export async function ncc(task) {
       'ncc_cross_spawn',
       'ncc_css_loader',
       'ncc_css_modules_typescript_loader',
+      'ncc_compression',
       'ncc_debug',
       'ncc_deepmerge',
       'ncc_dotenv',
@@ -676,6 +737,8 @@ export async function ncc(task) {
       'ncc_set_value',
       'ncc_signale',
       'ncc_serialize_javascript',
+      'ncc_sockjs',
+      'ncc_spdy',
       'ncc_speed_measure_webpack_plugin',
       'ncc_stats_webpack_plugin',
       'ncc_style_loader',
