@@ -418,6 +418,16 @@ export async function ncc_resolve(task, opts) {
     .target('compiled/resolve');
 }
 
+externals['resolve-cwd'] = '@umijs/deps/compiled/resolve-cwd';
+export async function ncc_resolve_cwd(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('resolve-cwd'))
+    )
+    .ncc({ packageName: 'resolve-cwd', externals })
+    .target('compiled/resolve-cwd');
+}
+
 externals['rimraf'] = '@umijs/deps/compiled/rimraf';
 export async function ncc_rimraf(task, opts) {
   await task
@@ -711,11 +721,14 @@ export async function ncc(task) {
       'ncc_dotenv',
       'ncc_ejs',
       'ncc_execa',
+      'ncc_express',
       'ncc_file_loader',
       'ncc_fork_ts_checker_webpack_plugin',
       'ncc_friendly_errors_webpack_plugin',
       'ncc_glob',
       'ncc_got',
+      'ncc_http_proxy_middleware',
+      'ncc_immer',
       'ncc_path_to_regexp',
       'ncc_lodash',
       'ncc_less',
@@ -732,6 +745,7 @@ export async function ncc(task) {
       'ncc_portfinder',
       'ncc_raw_loader',
       'ncc_resolve',
+      'ncc_resolve_cwd',
       'ncc_rimraf',
       'ncc_semver',
       'ncc_set_value',
