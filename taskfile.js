@@ -13,7 +13,7 @@ const externals = {
   chokidar: 'chokidar',
   clipboardy: 'clipboardy',
 
-  // webapck
+  // webpack
   'node-libs-browser': 'node-libs-browser',
 };
 
@@ -45,6 +45,16 @@ export async function ncc_cheerio(task, opts) {
     )
     .ncc({ packageName: 'cheerio', externals })
     .target('compiled/cheerio');
+}
+
+externals['cliui'] = '@umijs/deps/compiled/cliui';
+export async function ncc_cliui(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('cliui'))
+    )
+    .ncc({ packageName: 'cliui', externals })
+    .target('compiled/cliui');
 }
 
 externals['color'] = '@umijs/deps/compiled/color';
@@ -147,6 +157,16 @@ export async function ncc_file_loader(task, opts) {
     .target('compiled/file-loader');
 }
 
+externals['fork-ts-checker-webpack-plugin'] = '@umijs/deps/compiled/fork-ts-checker-webpack-plugin';
+export async function ncc_fork_ts_checker_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('fork-ts-checker-webpack-plugin'))
+    )
+    .ncc({ packageName: 'fork-ts-checker-webpack-plugin', externals })
+    .target('compiled/fork-ts-checker-webpack-plugin');
+}
+
 externals['friendly-errors-webpack-plugin'] = '@umijs/deps/compiled/friendly-errors-webpack-plugin';
 export async function ncc_friendly_errors_webpack_plugin(task, opts) {
   await task
@@ -175,6 +195,17 @@ export async function ncc_got(task, opts) {
     )
     .ncc({ packageName: 'got', externals })
     .target('compiled/got');
+}
+
+// don't external
+// externals['path-to-regexp'] = '@umijs/deps/compiled/path-to-regexp';
+export async function ncc_path_to_regexp(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('path-to-regexp'))
+    )
+    .ncc({ packageName: 'path-to-regexp', externals })
+    .target('compiled/path-to-regexp');
 }
 
 externals['less'] = '@umijs/deps/compiled/less';
@@ -207,6 +238,16 @@ export async function ncc_lodash(task, opts) {
     .target('compiled/lodash');
 }
 
+externals['merge-stream'] = '@umijs/deps/compiled/merge-stream';
+export async function ncc_merge_stream(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('merge-stream'))
+    )
+    .ncc({ packageName: 'merge-stream', externals })
+    .target('compiled/merge-stream');
+}
+
 externals['mkdirp'] = '@umijs/deps/compiled/mkdirp';
 export async function ncc_mkdirp(task, opts) {
   await task
@@ -215,6 +256,16 @@ export async function ncc_mkdirp(task, opts) {
     )
     .ncc({ packageName: 'mkdirp', externals })
     .target('compiled/mkdirp');
+}
+
+externals['multer'] = '@umijs/deps/compiled/multer';
+export async function ncc_multer(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('multer'))
+    )
+    .ncc({ packageName: 'multer', externals })
+    .target('compiled/multer');
 }
 
 externals['mustache'] = '@umijs/deps/compiled/mustache';
@@ -307,6 +358,16 @@ export async function ncc_signale(task, opts) {
     .target('compiled/signale');
 }
 
+externals['serialize-javascript'] = '@umijs/deps/compiled/serialize-javascript';
+export async function ncc_serialize_javascript(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('serialize-javascript'))
+    )
+    .ncc({ packageName: 'serialize-javascript', externals })
+    .target('compiled/serialize-javascript');
+}
+
 externals['speed-measure-webpack-plugin'] = '@umijs/deps/compiled/speed-measure-webpack-plugin';
 export async function ncc_speed_measure_webpack_plugin(task, opts) {
   await task
@@ -345,6 +406,16 @@ export async function ncc_yargs_parser(task, opts) {
     )
     .ncc({ packageName: 'yargs-parser', externals })
     .target('compiled/yargs-parser');
+}
+
+externals['umi-webpack-bundle-analyzer'] = '@umijs/deps/compiled/umi-webpack-bundle-analyzer';
+export async function ncc_umi_webpack_bundle_analyzer(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('umi-webpack-bundle-analyzer'))
+    )
+    .ncc({ packageName: 'umi-webpack-bundle-analyzer', externals })
+    .target('compiled/umi-webpack-bundle-analyzer');
 }
 
 externals['url-loader'] = '@umijs/deps/compiled/url-loader';
@@ -407,6 +478,16 @@ export async function ncc_yargs(task, opts) {
     .target('compiled/yargs');
 }
 
+externals['zlib'] = '@umijs/deps/compiled/zlib';
+export async function ncc_zlib(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('zlib'))
+    )
+    .ncc({ packageName: 'zlib', externals })
+    .target('compiled/zlib');
+}
+
 externals['webpack-sources'] = '@umijs/deps/compiled/webpack-sources';
 export async function ncc_webpack_sources(task, opts) {
   await task
@@ -459,6 +540,26 @@ export async function ncc_webpack_bundle5(task, opts) {
     .target('compiled/webpack');
 }
 
+externals['@hapi/joi'] = '@umijs/deps/compiled/@hapi/joi';
+export async function ncc_hapi_joi(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('@hapi/joi'))
+    )
+    .ncc({ packageName: '@hapi/joi', externals })
+    .target('compiled/@hapi/joi');
+}
+
+externals['joi2types'] = '@umijs/deps/compiled/joi2types';
+export async function ncc_joi2types(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('joi2types'))
+    )
+    .ncc({ packageName: 'joi2types', externals })
+    .target('compiled/joi2types');
+}
+
 export async function ncc(task) {
   await task
     .clear('compiled')
@@ -466,6 +567,7 @@ export async function ncc(task) {
       'ncc_address',
       'ncc_chalk',
       'ncc_cheerio',
+      'ncc_cliui',
       'ncc_color',
       'ncc_copy_webpack_plugin',
       'ncc_crequire',
@@ -475,12 +577,18 @@ export async function ncc(task) {
       'ncc_debug',
       'ncc_deepmerge',
       'ncc_execa',
+      'ncc_file_loader',
+      'ncc_fork_ts_checker_webpack_plugin',
+      'ncc_friendly_errors_webpack_plugin',
       'ncc_glob',
       'ncc_got',
+      'ncc_path_to_regexp',
       'ncc_lodash',
       'ncc_less',
       'ncc_less_loader',
+      'ncc_merge_stream',
       'ncc_mkdirp',
+      'ncc_multer',
       'ncc_mustache',
       'ncc_optimize_css_assets_webpack_plugin',
       'ncc_pkg_up',
@@ -490,9 +598,11 @@ export async function ncc(task) {
       'ncc_rimraf',
       'ncc_semver',
       'ncc_signale',
+      'ncc_serialize_javascript',
       'ncc_speed_measure_webpack_plugin',
       'ncc_stats_webpack_plugin',
       'ncc_style_loader',
+      'ncc_umi_webpack_bundle_analyzer',
       'ncc_url_loader',
       'ncc_webpack_chain',
       'ncc_webpack_dev_middleware', // webpack-dev-middleware
@@ -500,11 +610,16 @@ export async function ncc(task) {
       'ncc_webpackbar',
       'ncc_yargs_parser',
       'ncc_yargs',
+      'ncc_zlib',
       'ncc_webpack_sources',
       'ncc_webpack_sources2',
       'ncc_webpack_bundle4',
       'ncc_webpack_bundle5',
       'ncc_webpack_bundle_packages',
+      'ncc_hapi_joi',
+      // depends on @hapi/joi
+      // oom?
+      // 'ncc_joi2types',
     ]);
 }
 
