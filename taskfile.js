@@ -15,6 +15,7 @@ const externals = {
 
   // webpack
   'node-libs-browser': 'node-libs-browser',
+  'jest-worker': 'jest-worker',
 };
 
 externals['address'] = '@umijs/deps/compiled/address';

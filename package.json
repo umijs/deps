@@ -1,6 +1,13 @@
 {
   "name": "@umijs/deps",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "authors": [
+    "chencheng <sorrycc@gmail.com> (https://github.com/sorrycc)"
+  ],
+  "license": "MIT",
   "scripts": {
     "ncc-compiled": "ncc cache clean && taskr ncc"
   },
@@ -10,12 +17,14 @@
     ]
   },
   "files": [
-    "compiled"
+    "compiled",
+    "reexported"
   ],
   "dependencies": {
     "chokidar": "3.5.1",
     "clipboardy": "2.3.0",
-    "node-libs-browser": "2.2.1"
+    "node-libs-browser": "2.2.1",
+    "jest-worker": "24.9.0"
   },
   "devDependencies": {
     "@babel/core": "7.12.10",
