@@ -137,6 +137,26 @@ export async function ncc_deepmerge(task, opts) {
     .target('compiled/deepmerge');
 }
 
+externals['ncc_dotenv'] = '@umijs/deps/compiled/ncc_dotenv';
+export async function ncc_dotenv(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('ncc_dotenv'))
+    )
+    .ncc({ packageName: 'ncc_dotenv', externals })
+    .target('compiled/ncc_dotenv');
+}
+
+externals['ejs'] = '@umijs/deps/compiled/ejs';
+export async function ncc_ejs(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('ejs'))
+    )
+    .ncc({ packageName: 'ejs', externals })
+    .target('compiled/ejs');
+}
+
 externals['execa'] = '@umijs/deps/compiled/execa';
 export async function ncc_execa(task, opts) {
   await task
@@ -238,6 +258,26 @@ export async function ncc_lodash(task, opts) {
     .target('compiled/lodash');
 }
 
+externals['marked'] = '@umijs/deps/compiled/marked';
+export async function ncc_marked(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('marked'))
+    )
+    .ncc({ packageName: 'marked', externals })
+    .target('compiled/marked');
+}
+
+externals['marked-terminal'] = '@umijs/deps/compiled/marked-terminal';
+export async function ncc_marked_terminal(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('marked-terminal'))
+    )
+    .ncc({ packageName: 'marked-terminal', externals })
+    .target('compiled/marked-terminal');
+}
+
 externals['merge-stream'] = '@umijs/deps/compiled/merge-stream';
 export async function ncc_merge_stream(task, opts) {
   await task
@@ -286,6 +326,16 @@ export async function ncc_optimize_css_assets_webpack_plugin(task, opts) {
     )
     .ncc({ packageName: 'optimize-css-assets-webpack-plugin', externals })
     .target('compiled/optimize-css-assets-webpack-plugin');
+}
+
+externals['os-locale'] = '@umijs/deps/compiled/os-locale';
+export async function ncc_os_locale(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('os-locale'))
+    )
+    .ncc({ packageName: 'os-locale', externals })
+    .target('compiled/os-locale');
 }
 
 externals['pkg-up'] = '@umijs/deps/compiled/pkg-up';
@@ -348,6 +398,16 @@ export async function ncc_semver(task, opts) {
     .target('compiled/semver');
 }
 
+externals['set-value'] = '@umijs/deps/compiled/set-value';
+export async function ncc_set_value(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('set-value'))
+    )
+    .ncc({ packageName: 'set-value', externals })
+    .target('compiled/set-value');
+}
+
 externals['signale'] = '@umijs/deps/compiled/signale';
 export async function ncc_signale(task, opts) {
   await task
@@ -396,6 +456,17 @@ export async function ncc_style_loader(task, opts) {
     )
     .ncc({ packageName: 'style-loader', externals })
     .target('compiled/style-loader');
+}
+
+// do not external!
+// externals['tapable'] = '@umijs/deps/compiled/tapable';
+export async function ncc_tapable(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('tapable'))
+    )
+    .ncc({ packageName: 'tapable', externals })
+    .target('compiled/tapable');
 }
 
 externals['yargs-parser'] = '@umijs/deps/compiled/yargs-parser';
@@ -576,6 +647,8 @@ export async function ncc(task) {
       'ncc_css_modules_typescript_loader',
       'ncc_debug',
       'ncc_deepmerge',
+      'ncc_dotenv',
+      'ncc_ejs',
       'ncc_execa',
       'ncc_file_loader',
       'ncc_fork_ts_checker_webpack_plugin',
@@ -586,22 +659,27 @@ export async function ncc(task) {
       'ncc_lodash',
       'ncc_less',
       'ncc_less_loader',
+      'ncc_marked',
+      'ncc_marked_terminal',
       'ncc_merge_stream',
       'ncc_mkdirp',
       'ncc_multer',
       'ncc_mustache',
       'ncc_optimize_css_assets_webpack_plugin',
+      'ncc_os_locale',
       'ncc_pkg_up',
       'ncc_portfinder',
       'ncc_raw_loader',
       'ncc_resolve',
       'ncc_rimraf',
       'ncc_semver',
+      'ncc_set_value',
       'ncc_signale',
       'ncc_serialize_javascript',
       'ncc_speed_measure_webpack_plugin',
       'ncc_stats_webpack_plugin',
       'ncc_style_loader',
+      'ncc_tapable',
       'ncc_umi_webpack_bundle_analyzer',
       'ncc_url_loader',
       'ncc_webpack_chain',

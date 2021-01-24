@@ -1,10 +1,10 @@
 module.exports =
-/******/ (function() { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 557:
-/***/ (function() {
+/***/ (() => {
 
 
 

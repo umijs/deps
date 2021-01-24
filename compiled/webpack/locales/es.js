@@ -13651,7 +13651,7 @@ function fixtmpdir (cache) {
 
 const path = __nccwpck_require__(5622)
 const y18n = __nccwpck_require__(8138)({
-  directory: __nccwpck_require__.ab + "locales2",
+  directory: __nccwpck_require__.ab + "locales1",
   locale: 'en',
   updateFiles: process.env.CACACHE_UPDATE_LOCALE_FILES === 'true'
 })
