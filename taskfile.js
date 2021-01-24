@@ -12,6 +12,7 @@ bundleRequire.resolve = (request, options) => {
 const externals = {
   chokidar: 'chokidar',
   clipboardy: 'clipboardy',
+  prettier: 'prettier',
 
   // webpack
   'node-libs-browser': 'node-libs-browser',
@@ -811,8 +812,7 @@ export async function ncc(task) {
       'ncc_webpack_bundle_packages',
       'ncc_hapi_joi',
       // depends on @hapi/joi
-      // json-schema-to-typescript 导致 ncc 打包卡住
-      // 'ncc_joi2types',
+      'ncc_joi2types',
     ]);
 }
 
