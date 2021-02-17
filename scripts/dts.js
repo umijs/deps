@@ -6,21 +6,25 @@ const cwd = process.cwd();
 
 function dts({ name }) {
   console.log(`Generate dts for ${name}`);
+  const isBabel = name.startsWith('@babel/');
   const pkgRoot = join(cwd, 'compiled', name);
   const pkg = new Package({
     cwd,
     name: name,
     typesRoot: pkgRoot,
   });
-  const pkgJSONPath = join(pkgRoot, 'package.json');
-  const pkgJSON = JSON.parse(readFileSync(pkgJSONPath, 'utf-8'));
-  pkgJSON.types = pkg.entryFile;
-  console.log(`Write types ${pkg.entryFile} to ${pkgJSONPath}`);
-  writeFileSync(
-    pkgJSONPath,
-    `${JSON.stringify(pkgJSON)}\n`,
-    'utf-8',
-  );
+
+  if (!isBabel) {
+    const pkgJSONPath = join(pkgRoot, 'package.json');
+    const pkgJSON = JSON.parse(readFileSync(pkgJSONPath, 'utf-8'));
+    pkgJSON.types = pkg.entryFile;
+    console.log(`Write types ${pkg.entryFile} to ${pkgJSONPath}`);
+    writeFileSync(
+      pkgJSONPath,
+      `${JSON.stringify(pkgJSON)}\n`,
+      'utf-8',
+    );
+  }
 }
 
 
@@ -29,6 +33,9 @@ function dts({ name }) {
 // - lodash
 // - babel 相关
 [
+  // '@babel/types',
+  // '@babel/traverse',
+  // '@babel/parser',
   // '@hapi/joi',
   // 'address',
   // 'chalk',
@@ -76,5 +83,5 @@ function dts({ name }) {
   dts({
     name,
   });
-})
+});
 

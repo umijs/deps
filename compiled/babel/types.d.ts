@@ -1,2 +1,2 @@
-export * from "../../types/babel/types.bundled";
+export * from "../@babel/types/lib/index-legacy";
 
