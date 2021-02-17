@@ -1,4 +1,4 @@
-import colors = require('../color-name');
+import colors = require('@umijs/deps/types/color/color-name');
 
 export type RGB = [number, number, number];
 export type HSL = [number, number, number];

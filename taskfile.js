@@ -183,14 +183,14 @@ export async function ncc_deepmerge(task, opts) {
     .target('compiled/deepmerge');
 }
 
-externals['ncc_dotenv'] = '@umijs/deps/compiled/ncc_dotenv';
+externals['dotenv'] = '@umijs/deps/compiled/dotenv';
 export async function ncc_dotenv(task, opts) {
   await task
     .source(
-      opts.src || relative(__dirname, require.resolve('ncc_dotenv'))
+      opts.src || relative(__dirname, require.resolve('dotenv'))
     )
-    .ncc({ packageName: 'ncc_dotenv', externals })
-    .target('compiled/ncc_dotenv');
+    .ncc({ packageName: 'dotenv', externals })
+    .target('compiled/dotenv');
 }
 
 externals['ejs'] = '@umijs/deps/compiled/ejs';

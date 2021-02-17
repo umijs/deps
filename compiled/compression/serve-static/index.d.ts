@@ -7,8 +7,8 @@
 // TypeScript Version: 2.3
 
 /// <reference types="node" />
-import * as m from "mime";
-import * as http from "http";
+import * as m from '@umijs/deps/types/compression/mime';
+import * as http from 'http';
 
 /**
  * Create a new middleware function to serve files from within a given root directory.

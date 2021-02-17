@@ -6,7 +6,7 @@
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // TypeScript Version: 3.7
 
-import convert = require('./color-convert');
+import convert = require('@umijs/deps/types/color/color-convert');
 
 type ColorParam = Color | string | ArrayLike<number> | number | { [key: string]: any };
 

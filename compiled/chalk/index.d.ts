@@ -129,7 +129,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		log(chalk`
 		CPU: {red ${cpu.totalPercent}%}
@@ -140,7 +140,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		log(chalk.red.bgBlack`2 + 3 = {bold ${2 + 3}}`)
 		```
@@ -176,7 +176,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		chalk.hex('#DEADED');
 		```
@@ -190,7 +190,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		chalk.keyword('orange');
 		```
@@ -237,7 +237,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		chalk.bgHex('#DEADED');
 		```
@@ -251,7 +251,7 @@ declare namespace chalk {
 
 		@example
 		```
-		import chalk = require('chalk');
+		import chalk = require('@umijs/deps/types/chalk/chalk');
 
 		chalk.bgKeyword('orange');
 		```
