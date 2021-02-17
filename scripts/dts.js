@@ -44,7 +44,7 @@ function dts({ name }) {
   // 'express',
   // 'glob',
   // 'got',
-  'http-proxy-middleware',
+  // 'http-proxy-middleware',
   // 'immer',
   // 'marked',
   // 'marked-terminal',
