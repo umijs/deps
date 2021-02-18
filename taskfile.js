@@ -63,6 +63,16 @@ export async function ncc_babel_bundle_packages(task, opts) {
     .target('compiled/babel/')
 }
 
+externals['chalk'] = '@umijs/deps/compiled/body-parser';
+export async function ncc_body_parser(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('body-parser'))
+    )
+    .ncc({ packageName: 'body-parser', externals })
+    .target('compiled/body-parser');
+}
+
 externals['chalk'] = '@umijs/deps/compiled/chalk';
 export async function ncc_chalk(task, opts) {
   await task
@@ -745,6 +755,7 @@ export async function ncc(task) {
       'ncc_address',
       'ncc_babel_bundle',
       'ncc_babel_bundle_packages',
+      'ncc_body_parser',
       'ncc_chalk',
       'ncc_cheerio',
       'ncc_cliui',

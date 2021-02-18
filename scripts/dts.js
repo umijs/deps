@@ -46,6 +46,7 @@ function dts({ name }) {
   // '@babel/parser',
   // '@hapi/joi',
   // 'address',
+  // 'body-parser',
   // 'chalk',
   // 'cheerio',
   // 'color',
@@ -85,7 +86,7 @@ function dts({ name }) {
   // 'webpack-chain',
   // 'webpack-dev-middleware',
   // 'webpack-sources',
-  'yargs',
+  // 'yargs',
   // 'yargs-parser',
 ].forEach(name => {
   dts({
