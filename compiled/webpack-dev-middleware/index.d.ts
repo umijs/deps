@@ -6,10 +6,10 @@
 //                 Piotr Błażejewicz <https://github.com/peterblazejewicz>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
-import * as webpack from '@umijs/deps/types/webpack-dev-middleware/webpack';
-import * as loglevel from '@umijs/deps/types/webpack-dev-middleware/loglevel';
-import { NextHandleFunction } from '@umijs/deps/types/webpack-dev-middleware/connect';
-import MemoryFileSystem = require('@umijs/deps/types/webpack-dev-middleware/memory-fs');
+import * as webpack from '../webpack';
+import * as loglevel from './loglevel';
+import { NextHandleFunction } from './connect';
+import MemoryFileSystem = require('./memory-fs');
 
 export = WebpackDevMiddleware;
 

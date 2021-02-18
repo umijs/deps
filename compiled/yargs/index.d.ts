@@ -25,7 +25,7 @@
 // Use parameterless declaration instead of declaring all parameters optional,
 // when all parameters are optional and more than one
 
-import { DetailedArguments, Configuration } from '@umijs/deps/types/yargs/yargs-parser';
+import { DetailedArguments, Configuration } from '../yargs-parser';
 
 declare namespace yargs {
     type BuilderCallback<T, R> = ((args: Argv<T>) => PromiseLike<Argv<R>>) | ((args: Argv<T>) => Argv<R>) | ((args: Argv<T>) => void);

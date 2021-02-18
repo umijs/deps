@@ -9,7 +9,7 @@
 //                 Oliver Emery <https://github.com/thrymgjol>
 //                 Piotr Błażejewicz <https://github.com/peterblazejewicz>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-import { Request, RequestHandler } from '@umijs/deps/types/multer/express';
+import { Request, RequestHandler } from '../express';
 import { Readable } from 'stream';
 
 declare global {

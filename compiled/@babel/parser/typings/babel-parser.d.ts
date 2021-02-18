@@ -11,7 +11,7 @@
 export function parse(
   input: string,
   options?: ParserOptions
-): import('@umijs/deps/types/@babel/parser/@babel/types').File;
+): import('../../types/lib/index-legacy').File;
 
 /**
  * Parse the provided code as a single expression.
@@ -19,7 +19,7 @@ export function parse(
 export function parseExpression(
   input: string,
   options?: ParserOptions
-): import('@umijs/deps/types/@babel/parser/@babel/types').Expression;
+): import('../../types/lib/index-legacy').Expression;
 
 export interface ParserOptions {
   /**

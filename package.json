@@ -11,6 +11,7 @@
   "bugs": "http://github.com/umijs/deps/issues",
   "homepage": "https://github.com/umijs/deps/#readme",
   "scripts": {
+    "dts": "node ./scripts/dts.js",
     "ncc-compiled": "ncc cache clean && taskr ncc",
     "prepublishOnly": "np --yolo --no-publish"
   },

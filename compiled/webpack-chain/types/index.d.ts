@@ -1,5 +1,5 @@
-import { Tapable } from '@umijs/deps/types/webpack-chain/tapable';
-import * as webpack from '@umijs/deps/types/webpack-chain/webpack';
+import { Tapable } from '../../tapable';
+import * as webpack from '../../webpack';
 import * as https from 'https';
 
 export = Config;

@@ -26,8 +26,8 @@ declare global {
 
 import * as http from 'http';
 import { EventEmitter } from 'events';
-import { Options as RangeParserOptions, Result as RangeParserResult, Ranges as RangeParserRanges } from '@umijs/deps/types/express/range-parser';
-import { ParsedQs } from '@umijs/deps/types/express/qs';
+import { Options as RangeParserOptions, Result as RangeParserResult, Ranges as RangeParserRanges } from '../range-parser';
+import { ParsedQs } from '../qs';
 
 export type Query = ParsedQs;
 

@@ -8,7 +8,7 @@
 
 /* =================== USAGE ===================
 
-    import express = require('@umijs/deps/types/express/express');
+    import express = require('.//express');
     var app = express();
 
  =============================================== */
@@ -16,10 +16,10 @@
 /// <reference types="express-serve-static-core" />
 /// <reference types="serve-static" />
 
-import * as bodyParser from '@umijs/deps/types/express/body-parser';
-import * as serveStatic from '@umijs/deps/types/express/serve-static';
-import * as core from '@umijs/deps/types/express/express-serve-static-core';
-import * as qs from '@umijs/deps/types/express/qs';
+import * as bodyParser from './body-parser';
+import * as serveStatic from './serve-static';
+import * as core from './express-serve-static-core';
+import * as qs from './qs';
 
 /**
  * Creates an Express application. The express() function is a top-level function exported by the express module.

@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import * as express from '@umijs/deps/types/http-proxy-middleware/express';
+import * as express from '../../express';
 import * as http from 'http';
-import * as httpProxy from '@umijs/deps/types/http-proxy-middleware/http-proxy';
+import * as httpProxy from '../http-proxy';
 import * as net from 'net';
 export interface Request extends express.Request {
 }

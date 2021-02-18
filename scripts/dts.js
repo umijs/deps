@@ -12,6 +12,13 @@ function dts({ name }) {
     cwd,
     name: name,
     typesRoot: pkgRoot,
+    externals: [
+      'express',
+      'webpack',
+      'webpack-sources',
+      'tapable',
+      'yargs-parser',
+    ],
   });
 
   if (!isBabel) {
@@ -33,6 +40,7 @@ function dts({ name }) {
 // - lodash
 // - babel 相关
 [
+  // babel 相关的先打包，然后再手动处理
   // '@babel/types',
   // '@babel/traverse',
   // '@babel/parser',
@@ -77,7 +85,7 @@ function dts({ name }) {
   // 'webpack-chain',
   // 'webpack-dev-middleware',
   // 'webpack-sources',
-  // 'yargs',
+  'yargs',
   // 'yargs-parser',
 ].forEach(name => {
   dts({

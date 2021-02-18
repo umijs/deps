@@ -10,7 +10,7 @@
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 // Minimum TypeScript Version: 3.4
 
-import * as t from '@umijs/deps/types/@babel/traverse/@babel/types';
+import * as t from '../types/lib/index-legacy';
 export import Node = t.Node;
 
 declare const traverse: {

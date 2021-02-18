@@ -7,7 +7,7 @@
 // TypeScript Version: 2.3
 
 /// <reference types="node" />
-import * as m from '@umijs/deps/types/express/mime';
+import * as m from '../mime';
 import * as http from 'http';
 
 /**
