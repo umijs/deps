@@ -41,10 +41,10 @@ import {
   AsyncSeriesHook,
   AsyncSeriesWaterfallHook,
 } from 'tapable';
-import * as UglifyJS from '@umijs/deps/types/webpack/uglify-js';
-import * as anymatch from '@umijs/deps/types/webpack/anymatch';
-import { RawSourceMap } from '@umijs/deps/types/webpack/source-map';
-import { Source, ConcatSource } from '@umijs/deps/types/webpack/webpack-sources';
+import * as UglifyJS from './uglify-js';
+import * as anymatch from './anymatch';
+import { RawSourceMap } from './source-map/source-map';
+import { Source, ConcatSource } from './webpack-sources';
 
 export = webpack;
 

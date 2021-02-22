@@ -6,7 +6,7 @@
 //                 Piotr Błażejewicz <https://github.com/peterblazejewicz>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
-import { RawSourceMap } from '@umijs/deps/types/webpack/source-map';
+import { RawSourceMap } from '../source-map/source-map';
 export interface ParseOptions {
     /**
      * Support top level `return` statements
