@@ -7,14 +7,14 @@ let initializedWebpack4 = false;
 let initFns = [];
 exports.init = function (useWebpack5) {
   if (useWebpack5) {
-    Object.assign(exports, require('./5/bundle5')());
+    Object.assign(exports, require('./5/bundle5')().webpack);
     exports.isWebpack5 = true;
     exports.webpack = require('./5/bundle5')().webpack;
     exports.default = require('./5/bundle5')().webpack;
     if (!initializedWebpack5) for (const cb of initFns) cb();
     initializedWebpack5 = true;
   } else {
-    Object.assign(exports, require('./4/bundle4')());
+    Object.assign(exports, require('./4/bundle4')().webpack);
     exports.isWebpack5 = false;
     exports.webpack = require('./4/bundle4')().webpack;
     exports.default = require('./4/bundle4')().webpack;
