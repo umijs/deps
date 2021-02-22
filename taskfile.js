@@ -374,7 +374,8 @@ export async function ncc_merge_stream(task, opts) {
     .target('compiled/merge-stream');
 }
 
-externals['mkdirp'] = '@umijs/deps/compiled/mkdirp';
+// mkdirp 有多版本问题，暂不做 external，比如 webpack 4 里可能用了 mkdirp 的老版本
+// externals['mkdirp'] = '@umijs/deps/compiled/mkdirp';
 export async function ncc_mkdirp(task, opts) {
   await task
     .source(
