@@ -334,6 +334,17 @@ export async function ncc_less_loader(task, opts) {
     .target('compiled/less-loader');
 }
 
+// 不 external loader-utils，可能不是同一个版本
+// externals['loader-utils'] = '@umijs/deps/compiled/loader-utils';
+export async function ncc_loader_utils(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('loader-utils'))
+    )
+    .ncc({ packageName: 'loader-utils', externals })
+    .target('compiled/loader-utils');
+}
+
 externals['lodash'] = '@umijs/deps/compiled/lodash';
 export async function ncc_lodash(task, opts) {
   await task
@@ -781,6 +792,7 @@ export async function ncc(task) {
       'ncc_http_proxy_middleware',
       'ncc_immer',
       'ncc_path_to_regexp',
+      'ncc_loader_utils',
       'ncc_lodash',
       'ncc_less',
       'ncc_less_loader',
