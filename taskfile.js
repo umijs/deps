@@ -55,7 +55,7 @@ const babelBundlePackages = {
   '@babel/preset-typescript': '@umijs/deps/compiled/babel/preset-typescript',
 }
 
-Object.assign(externals, babelBundlePackages)
+Object.assign(externals, babelBundlePackages);
 
 export async function ncc_babel_bundle_packages(task, opts) {
   await task
@@ -688,6 +688,10 @@ export async function ncc_webpack_sources2(task, opts) {
 }
 
 externals['webpack'] = '@umijs/deps/compiled/webpack/webpack'
+
+// 更多 webpack 的深度依赖
+Object.assign(externals, require('./bundles/webpack/innerFiles').getExternalsMap());
+
 export async function ncc_webpack_bundle4(task, opts) {
   await task
     .source(opts.src || 'bundles/webpack/bundle4.js')

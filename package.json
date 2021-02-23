@@ -11,8 +11,9 @@
   "bugs": "http://github.com/umijs/deps/issues",
   "homepage": "https://github.com/umijs/deps/#readme",
   "scripts": {
-    "dts": "node ./scripts/dts.js",
+    "dts": "node ./scripts/dts",
     "ncc-compiled": "ncc cache clean && taskr ncc",
+    "printWebpackInner": "node ./scripts/printWebpackInner",
     "prepublishOnly": "np --yolo --no-publish"
   },
   "taskr": {
@@ -54,6 +55,7 @@
     "@babel/traverse": "7.12.12",
     "@babel/types": "7.12.12",
     "@hapi/joi": "16.1.8",
+    "@pmmmwh/react-refresh-webpack-plugin": "0.4.3",
     "@svgr/webpack": "4.3.3",
     "@taskr/clear": "1.1.0",
     "@taskr/esnext": "1.1.0",

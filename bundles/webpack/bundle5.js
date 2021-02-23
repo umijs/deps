@@ -2,14 +2,22 @@
 
 module.exports = function () {
   return {
+    // inner imports
     Compilation: require('webpack5/lib/Compilation'),
+    ConstDependency: require('webpack5/lib/dependencies/ConstDependency'),
+    JavascriptParserHelpers: require('webpack5/lib/javascript/JavascriptParserHelpers'),
     LibraryTemplatePlugin: require('webpack5/lib/LibraryTemplatePlugin'),
-    LimitChunkCountPlugin: require('webpack5/lib/optimize/LimitChunkCountPlugin'),
     NodeTargetPlugin: require('webpack5/lib/node/NodeTargetPlugin'),
     NodeTemplatePlugin: require('webpack5/lib/node/NodeTemplatePlugin'),
     NormalModule: require('webpack5/lib/NormalModule'),
     RequestShortener: require('webpack5/lib/RequestShortener'),
-    SingleEntryPlugin: require('webpack/lib/SingleEntryPlugin'),
+    RuntimeGlobals: require('webpack5/lib/RuntimeGlobals'),
+    RuntimeModule: require('webpack5/lib/RuntimeModule'),
+    LimitChunkCountPlugin: require('webpack5/lib/optimize/LimitChunkCountPlugin'),
+    ParserHelpers: require('webpack5/lib/ParserHelpers'),
+    SingleEntryPlugin: require('webpack5/lib/SingleEntryPlugin'),
+    Template: require('webpack5/lib/Template'),
+
     sources: require('webpack5').sources,
     webpack: require('webpack5'),
   }
