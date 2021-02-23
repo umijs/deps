@@ -755,6 +755,16 @@ export async function ncc_babel_loader(task, opts) {
     .target('compiled/babel-loader');
 }
 
+externals['@pmmmwh/react-refresh-webpack-plugin'] = '@umijs/deps/compiled/@pmmmwh/react-refresh-webpack-plugin';
+export async function ncc_pmmmwh_react_refresh_webpack_plugin(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('@pmmmwh/react-refresh-webpack-plugin'))
+    )
+    .ncc({ packageName: '@pmmmwh/react-refresh-webpack-plugin', externals })
+    .target('compiled/@pmmmwh/react-refresh-webpack-plugin');
+}
+
 export async function ncc(task) {
   await task
     .clear('compiled')
@@ -831,6 +841,7 @@ export async function ncc(task) {
       // depends on @hapi/joi
       'ncc_joi2types',
       'ncc_babel_loader',
+      'ncc_pmmmwh_react_refresh_webpack_plugin',
     ]);
 }
 
