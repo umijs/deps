@@ -63,7 +63,7 @@ export async function ncc_babel_bundle_packages(task, opts) {
     .target('compiled/babel/')
 }
 
-externals['chalk'] = '@umijs/deps/compiled/body-parser';
+externals['body-parser'] = '@umijs/deps/compiled/body-parser';
 export async function ncc_body_parser(task, opts) {
   await task
     .source(
@@ -760,6 +760,17 @@ export async function ncc_joi2types(task, opts) {
     .target('compiled/joi2types');
 }
 
+// 放到 webpack 和 @babel/core 后面
+externals['babel-loader'] = '@umijs/deps/compiled/babel-loader';
+export async function ncc_babel_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('babel-loader'))
+    )
+    .ncc({ packageName: 'babel-loader', externals })
+    .target('compiled/babel-loader');
+}
+
 export async function ncc(task) {
   await task
     .clear('compiled')
@@ -837,6 +848,7 @@ export async function ncc(task) {
       'ncc_hapi_joi',
       // depends on @hapi/joi
       'ncc_joi2types',
+      'ncc_babel_loader',
     ]);
 }
 
