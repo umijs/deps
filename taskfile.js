@@ -690,7 +690,7 @@ export async function ncc_webpack_sources2(task, opts) {
 externals['webpack'] = '@umijs/deps/compiled/webpack/webpack'
 
 // 更多 webpack 的深度依赖
-Object.assign(externals, require('./bundles/webpack/innerFiles').getExternalsMap());
+// Object.assign(externals, require('./bundles/webpack/innerFiles').getExternalsMap());
 
 export async function ncc_webpack_bundle4(task, opts) {
   await task
@@ -753,16 +753,6 @@ export async function ncc_babel_loader(task, opts) {
     )
     .ncc({ packageName: 'babel-loader', externals })
     .target('compiled/babel-loader');
-}
-
-externals['@pmmmwh/react-refresh-webpack-plugin'] = '@umijs/deps/compiled/@pmmmwh/react-refresh-webpack-plugin';
-export async function ncc_pmmmwh_react_refresh_webpack_plugin(task, opts) {
-  await task
-    .source(
-      opts.src || relative(__dirname, require.resolve('@pmmmwh/react-refresh-webpack-plugin'))
-    )
-    .ncc({ packageName: '@pmmmwh/react-refresh-webpack-plugin', externals })
-    .target('compiled/@pmmmwh/react-refresh-webpack-plugin');
 }
 
 export async function ncc(task) {
@@ -841,7 +831,6 @@ export async function ncc(task) {
       // depends on @hapi/joi
       'ncc_joi2types',
       'ncc_babel_loader',
-      'ncc_pmmmwh_react_refresh_webpack_plugin',
     ]);
 }
 

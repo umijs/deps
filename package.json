@@ -55,7 +55,6 @@
     "@babel/traverse": "7.12.12",
     "@babel/types": "7.12.12",
     "@hapi/joi": "16.1.8",
-    "@pmmmwh/react-refresh-webpack-plugin": "0.4.3",
     "@svgr/webpack": "4.3.3",
     "@taskr/clear": "1.1.0",
     "@taskr/esnext": "1.1.0",
