@@ -355,26 +355,6 @@ export async function ncc_lodash(task, opts) {
     .target('compiled/lodash');
 }
 
-externals['marked'] = '@umijs/deps/compiled/marked';
-export async function ncc_marked(task, opts) {
-  await task
-    .source(
-      opts.src || relative(__dirname, require.resolve('marked'))
-    )
-    .ncc({ packageName: 'marked', externals })
-    .target('compiled/marked');
-}
-
-externals['marked-terminal'] = '@umijs/deps/compiled/marked-terminal';
-export async function ncc_marked_terminal(task, opts) {
-  await task
-    .source(
-      opts.src || relative(__dirname, require.resolve('marked-terminal'))
-    )
-    .ncc({ packageName: 'marked-terminal', externals })
-    .target('compiled/marked-terminal');
-}
-
 externals['merge-stream'] = '@umijs/deps/compiled/merge-stream';
 export async function ncc_merge_stream(task, opts) {
   await task
@@ -807,8 +787,6 @@ export async function ncc(task) {
       'ncc_lodash',
       'ncc_less',
       'ncc_less_loader',
-      'ncc_marked',
-      'ncc_marked_terminal',
       'ncc_merge_stream',
       'ncc_mkdirp',
       'ncc_multer',
