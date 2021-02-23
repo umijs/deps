@@ -1,6 +1,6 @@
 {
   "name": "@umijs/deps",
-  "version": "0.2.19",
+  "version": "0.2.20",
   "publishConfig": {
     "access": "public"
   },
