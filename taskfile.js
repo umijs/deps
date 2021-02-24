@@ -747,7 +747,7 @@ export async function ncc_zlib(task, opts) {
     .target('compiled/zlib');
 }
 
-externals['webpack-sources'] = '@umijs/deps/compiled/webpack-sources';
+// externals['webpack-sources'] = '@umijs/deps/compiled/webpack-sources';
 export async function ncc_webpack_sources(task, opts) {
   await task
     .source(
@@ -757,7 +757,7 @@ export async function ncc_webpack_sources(task, opts) {
     .target('compiled/webpack-sources');
 }
 
-externals['webpack-sources2'] = '@umijs/deps/compiled/webpack-sources2'
+// externals['webpack-sources2'] = '@umijs/deps/compiled/webpack-sources2'
 export async function ncc_webpack_sources2(task, opts) {
   await task
     .source(
@@ -786,12 +786,16 @@ export async function ncc_webpack_bundle4(task, opts) {
 }
 
 export async function ncc_webpack_bundle5(task, opts) {
+  console.log('test, opts.src', opts.src);
   await task
     .source(opts.src || 'bundles/webpack/bundle5.js')
     .ncc({
       packageName: 'webpack5',
       bundleName: 'webpack',
       customEmit(path) {
+        if (path.endsWith('.runtime.js')) {
+          require('fs').appendFileSync('/tmp/foo', `${path}\n`);
+        }
         if (path.endsWith('.runtime.js')) return `'./${basename(path)}'`;
       },
       externals: {
