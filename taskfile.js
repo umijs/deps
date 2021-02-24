@@ -29,6 +29,16 @@ export async function ncc_address(task, opts) {
     .target('compiled/address');
 }
 
+externals['ansi-html'] = '@umijs/deps/compiled/ansi-html';
+export async function ncc_ansi_html(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('ansi-html'))
+    )
+    .ncc({ packageName: 'ansi-html', externals })
+    .target('compiled/ansi-html');
+}
+
 export async function ncc_babel_bundle(task, opts) {
   const bundleExternals = { ...externals }
   for (const pkg of Object.keys(babelBundlePackages))
@@ -81,6 +91,16 @@ export async function ncc_chalk(task, opts) {
     )
     .ncc({ packageName: 'chalk', externals })
     .target('compiled/chalk');
+}
+
+externals['cacache'] = '@umijs/deps/compiled/cacache';
+export async function ncc_cacache(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('cacache'))
+    )
+    .ncc({ packageName: 'cacache', externals })
+    .target('compiled/cacache');
 }
 
 externals['cheerio'] = '@umijs/deps/compiled/cheerio';
@@ -213,6 +233,16 @@ export async function ncc_ejs(task, opts) {
     .target('compiled/ejs');
 }
 
+externals['error-stack-parser'] = '@umijs/deps/compiled/error-stack-parser';
+export async function ncc_error_stack_parser(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('error-stack-parser'))
+    )
+    .ncc({ packageName: 'error-stack-parser', externals })
+    .target('compiled/error-stack-parser');
+}
+
 externals['execa'] = '@umijs/deps/compiled/execa';
 export async function ncc_execa(task, opts) {
   await task
@@ -241,6 +271,16 @@ export async function ncc_file_loader(task, opts) {
     )
     .ncc({ packageName: 'file-loader', externals })
     .target('compiled/file-loader');
+}
+
+externals['find-cache-dir'] = '@umijs/deps/compiled/find-cache-dir';
+export async function ncc_find_cache_dir(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('find-cache-dir'))
+    )
+    .ncc({ packageName: 'find-cache-dir', externals })
+    .target('compiled/find-cache-dir');
 }
 
 externals['fork-ts-checker-webpack-plugin'] = '@umijs/deps/compiled/fork-ts-checker-webpack-plugin';
@@ -281,6 +321,16 @@ export async function ncc_got(task, opts) {
     )
     .ncc({ packageName: 'got', externals })
     .target('compiled/got');
+}
+
+externals['html-entities'] = '@umijs/deps/compiled/html-entities';
+export async function ncc_html_entities(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('html-entities'))
+    )
+    .ncc({ packageName: 'html-entities', externals })
+    .target('compiled/html-entities');
 }
 
 externals['http-proxy-middleware'] = '@umijs/deps/compiled/http-proxy-middleware';
@@ -396,6 +446,16 @@ export async function ncc_mustache(task, opts) {
     .target('compiled/mustache');
 }
 
+externals['native-url'] = '@umijs/deps/compiled/native-url';
+export async function ncc_native_url(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('native-url'))
+    )
+    .ncc({ packageName: 'native-url', externals })
+    .target('compiled/native-url');
+}
+
 externals['optimize-css-assets-webpack-plugin'] = '@umijs/deps/compiled/optimize-css-assets-webpack-plugin';
 export async function ncc_optimize_css_assets_webpack_plugin(task, opts) {
   await task
@@ -414,6 +474,16 @@ export async function ncc_os_locale(task, opts) {
     )
     .ncc({ packageName: 'os-locale', externals })
     .target('compiled/os-locale');
+}
+
+externals['p-limit'] = '@umijs/deps/compiled/p-limit';
+export async function ncc_p_limit(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('p-limit'))
+    )
+    .ncc({ packageName: 'p-limit', externals })
+    .target('compiled/p-limit');
 }
 
 externals['pkg-up'] = '@umijs/deps/compiled/pkg-up';
@@ -524,6 +594,16 @@ export async function ncc_sockjs(task, opts) {
     )
     .ncc({ packageName: 'sockjs', externals })
     .target('compiled/sockjs');
+}
+
+externals['source-map'] = '@umijs/deps/compiled/source-map';
+export async function ncc_source_map(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('source-map'))
+    )
+    .ncc({ packageName: 'source-map', externals })
+    .target('compiled/source-map');
 }
 
 externals['spdy'] = '@umijs/deps/compiled/spdy';
@@ -760,9 +840,11 @@ export async function ncc(task) {
     .clear('compiled')
     .parallel([
       'ncc_address',
+      'ncc_ansi_html',
       'ncc_babel_bundle',
       'ncc_babel_bundle_packages',
       'ncc_body_parser',
+      'ncc_cacache',
       'ncc_chalk',
       'ncc_cheerio',
       'ncc_cliui',
@@ -777,13 +859,16 @@ export async function ncc(task) {
       'ncc_deepmerge',
       'ncc_dotenv',
       'ncc_ejs',
+      'ncc_error_stack_parser',
       'ncc_execa',
       'ncc_express',
       'ncc_file_loader',
+      'ncc_find_cache_dir',
       'ncc_fork_ts_checker_webpack_plugin',
       'ncc_friendly_errors_webpack_plugin',
       'ncc_glob',
       'ncc_got',
+      'ncc_html_entities',
       'ncc_http_proxy_middleware',
       'ncc_immer',
       'ncc_path_to_regexp',
@@ -795,8 +880,10 @@ export async function ncc(task) {
       'ncc_mkdirp',
       'ncc_multer',
       'ncc_mustache',
+      'ncc_native_url',
       'ncc_optimize_css_assets_webpack_plugin',
       'ncc_os_locale',
+      'ncc_p_limit',
       'ncc_pkg_up',
       'ncc_portfinder',
       'ncc_raw_loader',
@@ -808,6 +895,7 @@ export async function ncc(task) {
       'ncc_signale',
       'ncc_serialize_javascript',
       'ncc_sockjs',
+      'ncc_source_map',
       'ncc_spdy',
       'ncc_speed_measure_webpack_plugin',
       'ncc_stats_webpack_plugin',
