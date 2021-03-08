@@ -2,20 +2,30 @@ exports.__esModule = true;
 exports.isWebpack5 = false;
 exports.default = undefined;
 
+function assignWithGetter(source, webpack) {
+  Object.keys(webpack).forEach(key => {
+    Object.defineProperty(source, key, {
+      get() { return webpack[key]; }
+    });
+  });
+}
+
 let initializedWebpack5 = false;
 let initializedWebpack4 = false;
 let initFns = [];
 exports.init = function (useWebpack5) {
   if (useWebpack5) {
     Object.assign(exports, require('./5/bundle5')());
-    Object.assign(exports, require('./5/bundle5')().webpack);
+    // Object.assign(exports, require('./5/bundle5')().webpack);
+    assignWithGetter(exports, require('./5/bundle5')().webpack);
     exports.isWebpack5 = true;
     exports.default = require('./5/bundle5')().webpack;
     if (!initializedWebpack5) for (const cb of initFns) cb();
     initializedWebpack5 = true;
   } else {
     Object.assign(exports, require('./4/bundle4')());
-    Object.assign(exports, require('./4/bundle4')().webpack);
+    // Object.assign(exports, require('./4/bundle4')().webpack);
+    assignWithGetter(exports, require('./4/bundle4')().webpack);
     exports.isWebpack5 = false;
     exports.default = require('./4/bundle4')().webpack;
     if (!initializedWebpack4) for (const cb of initFns) cb();
