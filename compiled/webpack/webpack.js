@@ -16,7 +16,7 @@ let initFns = [];
 let inited = false;
 exports.init = function (useWebpack5) {
   // allow init once
-  if (!inited) return;
+  if (inited) return;
   inited = true;
 
   if (useWebpack5) {
