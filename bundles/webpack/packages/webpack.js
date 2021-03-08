@@ -13,7 +13,12 @@ function assignWithGetter(source, webpack) {
 let initializedWebpack5 = false;
 let initializedWebpack4 = false;
 let initFns = [];
+let inited = false;
 exports.init = function (useWebpack5) {
+  // allow init once
+  if (!inited) return;
+  inited = true;
+
   if (useWebpack5) {
     Object.assign(exports, require('./5/bundle5')());
     // Object.assign(exports, require('./5/bundle5')().webpack);
