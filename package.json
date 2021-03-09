@@ -31,9 +31,6 @@
     "jest-worker": "24.9.0",
     "prettier": "2.2.1"
   },
-  "peerDependencies": {
-    "node-libs-browser": "2"
-  },
   "devDependencies": {
     "@babel/code-frame": "7.12.11",
     "@babel/core": "7.12.10",
