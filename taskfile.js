@@ -283,14 +283,34 @@ export async function ncc_find_cache_dir(task, opts) {
     .target('compiled/find-cache-dir');
 }
 
-externals['fork-ts-checker-webpack-plugin'] = '@umijs/deps/compiled/fork-ts-checker-webpack-plugin';
-export async function ncc_fork_ts_checker_webpack_plugin(task, opts) {
+// externals['fork-ts-checker-webpack-plugin'] = '@umijs/deps/compiled/fork-ts-checker-webpack-plugin';
+export async function ncc_fork_ts_checker_webpack_plugin_bundle(task, opts) {
+  await task
+    .source(opts.src || 'bundles/fork-ts-checker-webpack-plugin/bundle.js')
+    .ncc({
+      packageName: 'fork-ts-checker-webpack-plugin',
+      bundleName: 'fork-ts-checker-webpack-plugin',
+      externals: {
+        ...externals,
+        typescript: 'typescript',
+        eslint: 'eslint',
+      },
+      minify: false,
+    })
+    .target('compiled/fork-ts-checker-webpack-plugin')
+
   await task
     .source(
       opts.src || relative(__dirname, require.resolve('fork-ts-checker-webpack-plugin'))
     )
     .ncc({ packageName: 'fork-ts-checker-webpack-plugin', externals })
     .target('compiled/fork-ts-checker-webpack-plugin');
+}
+
+export async function ncc_fork_ts_checker_webpack_plugin_bundle_package(task, opts) {
+  await task
+    .source(opts.src || 'bundles/fork-ts-checker-webpack-plugin/packages/*')
+    .target('compiled/fork-ts-checker-webpack-plugin/')
 }
 
 externals['friendly-errors-webpack-plugin'] = '@umijs/deps/compiled/friendly-errors-webpack-plugin';
@@ -864,7 +884,8 @@ export async function ncc(task) {
       'ncc_express',
       'ncc_file_loader',
       'ncc_find_cache_dir',
-      'ncc_fork_ts_checker_webpack_plugin',
+      'ncc_fork_ts_checker_webpack_plugin_bundle',
+      'ncc_fork_ts_checker_webpack_plugin_bundle_package',
       'ncc_friendly_errors_webpack_plugin',
       'ncc_glob',
       'ncc_got',
