@@ -62,7 +62,7 @@ function dts({ name }) {
   // 'got',
   // 'http-proxy-middleware',
   // 'immer',
-  'loader-utils',
+  // 'loader-utils',
   // 'marked',
   // 'marked-terminal',
   // 'merge-stream',

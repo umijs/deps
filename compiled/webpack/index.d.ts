@@ -40,11 +40,11 @@ import {
   AsyncSeriesBailHook,
   AsyncSeriesHook,
   AsyncSeriesWaterfallHook,
-} from 'tapable';
+} from '../tapable';
 import * as UglifyJS from './uglify-js';
 import * as anymatch from './anymatch';
 import { RawSourceMap } from './source-map/source-map';
-import { Source, ConcatSource } from './webpack-sources';
+import { Source, ConcatSource } from '../webpack-sources';
 
 export = webpack;
 
@@ -85,7 +85,6 @@ declare namespace webpack {
 
     function init(isWebpack5?: boolean): void;
     function onWebpackInit(cb: Function): void;
-
     interface Configuration {
         /** Enable production optimizations or development hints. */
         mode?: "development" | "production" | "none";
