@@ -616,7 +616,8 @@ export async function ncc_sockjs(task, opts) {
     .target('compiled/sockjs');
 }
 
-externals['source-map'] = '@umijs/deps/compiled/source-map';
+// webpack 4 打包时不能 external source-map，应该是用了不同版本
+// externals['source-map'] = '@umijs/deps/compiled/source-map';
 export async function ncc_source_map(task, opts) {
   await task
     .source(
