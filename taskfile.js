@@ -824,6 +824,21 @@ export async function ncc_webpack_bundle5(task, opts) {
     .target('compiled/webpack/5');
 }
 
+export async function ncc_worker_loader(task, opts) {
+  await task
+    .source(
+      opts.src || relative(__dirname, require.resolve('worker-loader'))
+    )
+    .ncc({
+      packageName: 'worker-loader',
+      externals: {
+        ...externals,
+        ...require('./bundles/webpack/innerFiles').getExternalsMap()
+      },
+    })
+    .target('compiled/worker-loader');
+}
+
 externals['@hapi/joi'] = '@umijs/deps/compiled/@hapi/joi';
 export async function ncc_hapi_joi(task, opts) {
   await task
@@ -936,6 +951,7 @@ export async function ncc(task) {
       'ncc_webpack_bundle4',
       'ncc_webpack_bundle5',
       'ncc_webpack_bundle_packages',
+      'ncc_worker_loader',
       'ncc_hapi_joi',
       // depends on @hapi/joi
       'ncc_joi2types',

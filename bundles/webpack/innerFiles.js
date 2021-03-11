@@ -4,6 +4,7 @@ const { join } = require('path');
 const files = [
   'webpack/lib/Compilation',
   'webpack/lib/dependencies/ConstDependency',
+  'webpack/lib/ExternalsPlugin',
   'webpack/lib/javascript/JavascriptParserHelpers',
   'webpack/lib/LibraryTemplatePlugin',
   'webpack/lib/node/NodeTargetPlugin',
@@ -16,6 +17,10 @@ const files = [
   'webpack/lib/ParserHelpers',
   'webpack/lib/SingleEntryPlugin',
   'webpack/lib/Template',
+  'webpack/lib/web/FetchCompileAsyncWasmPlugin',
+  'webpack/lib/web/FetchCompileWasmPlugin',
+  'webpack/lib/web/FetchCompileWasmTemplatePlugin',
+  'webpack/lib/webworker/WebWorkerTemplatePlugin',
 ];
 
 function getFileName(filePath) {
