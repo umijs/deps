@@ -2789,8 +2789,8 @@ module.exports = function () {
     ParserHelpers: __webpack_require__(56035),
     SingleEntryPlugin: __webpack_require__(79349),
     Template: __webpack_require__(73284),
-    FetchCompileAsyncWasmPlugin: __webpack_require__(12233),
-    FetchCompileWasmPlugin: __webpack_require__(68220),
+    // FetchCompileAsyncWasmPlugin: require('webpack/lib/web/FetchCompileAsyncWasmPlugin'),
+    // FetchCompileWasmPlugin: require('webpack/lib/web/FetchCompileWasmPlugin'),
     FetchCompileWasmTemplatePlugin: __webpack_require__(81004),
     WebWorkerTemplatePlugin: __webpack_require__(24813),
 
@@ -120766,22 +120766,6 @@ function end (api, callback) {
 
 module.exports     = farm
 module.exports.end = end
-
-
-/***/ }),
-
-/***/ 12233:
-/***/ (function(module) {
-
-module.exports = eval("require")("webpack/lib/web/FetchCompileAsyncWasmPlugin");
-
-
-/***/ }),
-
-/***/ 68220:
-/***/ (function(module) {
-
-module.exports = eval("require")("webpack/lib/web/FetchCompileWasmPlugin");
 
 
 /***/ }),

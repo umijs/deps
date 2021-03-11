@@ -18,8 +18,8 @@ module.exports = function () {
     ParserHelpers: require('webpack/lib/ParserHelpers'),
     SingleEntryPlugin: require('webpack/lib/SingleEntryPlugin'),
     Template: require('webpack/lib/Template'),
-    FetchCompileAsyncWasmPlugin: require('webpack/lib/web/FetchCompileAsyncWasmPlugin'),
-    FetchCompileWasmPlugin: require('webpack/lib/web/FetchCompileWasmPlugin'),
+    // FetchCompileAsyncWasmPlugin: require('webpack/lib/web/FetchCompileAsyncWasmPlugin'),
+    // FetchCompileWasmPlugin: require('webpack/lib/web/FetchCompileWasmPlugin'),
     FetchCompileWasmTemplatePlugin: require('webpack/lib/web/FetchCompileWasmTemplatePlugin'),
     WebWorkerTemplatePlugin: require('webpack/lib/webworker/WebWorkerTemplatePlugin'),
 
