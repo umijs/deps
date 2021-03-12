@@ -16,7 +16,7 @@ module.exports = function () {
     RuntimeModule: require('webpack5/lib/RuntimeModule'),
     LimitChunkCountPlugin: require('webpack5/lib/optimize/LimitChunkCountPlugin'),
     // ParserHelpers: require('webpack5/lib/ParserHelpers'),
-    SingleEntryPlugin: require('webpack5/lib/SingleEntryPlugin'),
+    // SingleEntryPlugin: require('webpack5/lib/SingleEntryPlugin'),
     Template: require('webpack5/lib/Template'),
     FetchCompileAsyncWasmPlugin: require('webpack5/lib/web/FetchCompileAsyncWasmPlugin'),
     FetchCompileWasmPlugin: require('webpack5/lib/web/FetchCompileWasmPlugin'),
