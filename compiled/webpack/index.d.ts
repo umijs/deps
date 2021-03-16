@@ -628,14 +628,19 @@ declare namespace webpack {
     type Rule = RuleSetRule;
 
     namespace Options {
-        type Devtool = 'eval' | 'inline-source-map' | 'cheap-eval-source-map' | 'cheap-source-map' | 'cheap-module-eval-source-map' | 'cheap-module-source-map' | 'eval-source-map'
+        type DevtoolWebpack4 = 'eval' | 'inline-source-map' | 'cheap-eval-source-map' | 'cheap-source-map' | 'cheap-module-eval-source-map' | 'cheap-module-source-map' | 'eval-source-map'
             | 'source-map' | 'nosources-source-map' | 'hidden-source-map' | 'nosources-source-map' | 'inline-cheap-source-map' | 'inline-cheap-module-source-map' | '@eval'
             | '@inline-source-map' | '@cheap-eval-source-map' | '@cheap-source-map' | '@cheap-module-eval-source-map' | '@cheap-module-source-map' | '@eval-source-map'
             | '@source-map' | '@nosources-source-map' | '@hidden-source-map' | '@nosources-source-map' | '#eval' | '#inline-source-map' | '#cheap-eval-source-map'
             | '#cheap-source-map' | '#cheap-module-eval-source-map' | '#cheap-module-source-map' | '#eval-source-map' | '#source-map' | '#nosources-source-map'
             | '#hidden-source-map' | '#nosources-source-map' | '#@eval' | '#@inline-source-map' | '#@cheap-eval-source-map' | '#@cheap-source-map' | '#@cheap-module-eval-source-map'
             | '#@cheap-module-source-map' | '#@eval-source-map' | '#@source-map' | '#@nosources-source-map' | '#@hidden-source-map' | '#@nosources-source-map' | boolean;
+            
+        type DevtoolWebpack5 = 'eval-cheap-source-map' | 'eval-cheap-module-source-map' | 'eval-nosources-cheap-source-map' | 'eval-nosources-cheap-module-source-map' | 'eval-nosources-source-map'
+            | 'inline-nosources-cheap-source-map' | 'inline-nosources-cheap-module-source-map' | 'inline-nosources-source-map' | 'nosources-cheap-source-map' | 'nosources-cheap-module-source-map'
+            | 'hidden-nosources-cheap-source-map' | 'hidden-nosources-cheap-module-source-map' | 'hidden-nosources-source-map' | 'hidden-cheap-source-map' | 'hidden-cheap-module-source-map';
 
+        type Devtool = DevtoolWebpack4 | DevtoolWebpack5;
         interface Performance {
             /** This property allows webpack to control what files are used to calculate performance hints. */
             assetFilter?(assetFilename: string): boolean;
