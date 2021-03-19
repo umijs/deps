@@ -49,6 +49,7 @@ export async function ncc_babel_bundle(task, opts) {
       packageName: '@babel/core',
       bundleName: 'babel',
       externals: bundleExternals,
+      minify: false,
     })
     .target('compiled/babel')
 }
