@@ -14,6 +14,11 @@ const externals = {
   clipboardy: 'clipboardy',
   prettier: 'prettier',
 
+  // umi 的 bundle 有问题，会自动包含 react，这部分没必要包含进来
+  'react': 'react',
+  // @umijs/babel-plugin-import-to-await-require 依赖 @umijs/utils，后续考虑删除依赖
+  '@umijs/utils': '@umijs/utils',
+
   // webpack
   'node-libs-browser': 'node-libs-browser',
   'jest-worker': 'jest-worker',
@@ -789,7 +794,7 @@ export async function ncc_webpack_sources2(task, opts) {
     .target('compiled/webpack-sources2')
 }
 
-externals['webpack'] = '@umijs/deps/compiled/webpack/webpack'
+externals['webpack'] = '@umijs/deps/compiled/webpack/webpack';
 
 // 更多 webpack 的深度依赖
 // Object.assign(externals, require('./bundles/webpack/innerFiles').getExternalsMap());
