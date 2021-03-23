@@ -15,6 +15,7 @@ module.exports = function () {
     // RuntimeGlobals: require('webpack/lib/RuntimeGlobals'),
     // RuntimeModule: require('webpack/lib/RuntimeModule'),
     LimitChunkCountPlugin: require('webpack/lib/optimize/LimitChunkCountPlugin'),
+    LoaderTargetPlugin: require('webpack/lib/LoaderTargetPlugin'),
     ParserHelpers: require('webpack/lib/ParserHelpers'),
     SingleEntryPlugin: require('webpack/lib/SingleEntryPlugin'),
     Template: require('webpack/lib/Template'),

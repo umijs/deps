@@ -7,6 +7,7 @@ const files = [
   'webpack/lib/ExternalsPlugin',
   'webpack/lib/javascript/JavascriptParserHelpers',
   'webpack/lib/LibraryTemplatePlugin',
+  'webpack/lib/LoaderTargetPlugin',
   'webpack/lib/node/NodeTargetPlugin',
   'webpack/lib/node/NodeTemplatePlugin',
   'webpack/lib/NormalModule',
