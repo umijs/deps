@@ -24,7 +24,7 @@ module.exports = function () {
     FetchCompileWasmTemplatePlugin: require('webpack/lib/web/FetchCompileWasmTemplatePlugin'),
     WebWorkerTemplatePlugin: require('webpack/lib/webworker/WebWorkerTemplatePlugin'),
 
-    pkgInfo: require('webpack5/package'),
+    pkgInfo: require('webpack/package'),
     sources: require('webpack-sources'),
     webpack: require('webpack'),
   }
