@@ -118,6 +118,10 @@ function presetTypescript() {
   return require('@babel/preset-typescript');
 }
 
+function pluginProposalRecordAndTuple() {
+  return require('@babel/plugin-proposal-record-and-tuple');
+}
+
 module.exports = {
   codeFrame,
   core,
@@ -149,4 +153,5 @@ module.exports = {
   pluginNamedAssetImport,
   pluginReactRequire,
   pluginTransformTypescriptMetadata,
+  pluginProposalRecordAndTuple,
 };
