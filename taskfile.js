@@ -56,7 +56,7 @@ export async function ncc_babel_bundle(task, opts) {
       externals: bundleExternals,
       minify: false,
     })
-    .target('compiled/babel')
+    .target('compiled/babel');
 }
 
 const babelBundlePackages = {
