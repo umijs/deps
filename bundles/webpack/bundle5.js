@@ -4,6 +4,7 @@ module.exports = function () {
   return {
     // inner imports
     Compilation: require('webpack5/lib/Compilation'),
+    Chunk: require('webpack5/lib/Chunk'),
     ConstDependency: require('webpack5/lib/dependencies/ConstDependency'),
     ExternalsPlugin: require('webpack5/lib/ExternalsPlugin'),
     JavascriptParserHelpers: require('webpack5/lib/javascript/JavascriptParserHelpers'),
